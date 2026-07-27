@@ -1,0 +1,37 @@
+building_a,building_b,distance_meters
+Mechanical Science Block,Mechanical Science Block,0
+Mechanical Science Block,Sunflower Block,414
+Mechanical Science Block,Western Wing - IB Block,152
+Mechanical Science Block,Eastern Wing - AS Block,204
+Mechanical Science Block,Research park,404
+Mechanical Science Block,Learning Centre,87
+Sunflower Block,Mechanical Science Block,294
+Sunflower Block,Sunflower Block,0
+Sunflower Block,Western Wing - IB Block,45
+Sunflower Block,Eastern Wing - AS Block,380
+Sunflower Block,Research park,151
+Sunflower Block,Learning Centre,244
+Western Wing - IB Block,Mechanical Science Block,105
+Western Wing - IB Block,Sunflower Block,167
+Western Wing - IB Block,Western Wing - IB Block,0
+Western Wing - IB Block,Eastern Wing - AS Block,387
+Western Wing - IB Block,Research park,278
+Western Wing - IB Block,Learning Centre,132
+Eastern Wing - AS Block,Mechanical Science Block,248
+Eastern Wing - AS Block,Sunflower Block,180
+Eastern Wing - AS Block,Western Wing - IB Block,51
+Eastern Wing - AS Block,Eastern Wing - AS Block,0
+Eastern Wing - AS Block,Research park,313
+Eastern Wing - AS Block,Learning Centre,118
+Research park,Mechanical Science Block,173
+Research park,Sunflower Block,152
+Research park,Western Wing - IB Block,415
+Research park,Eastern Wing - AS Block,306
+Research park,Research park,0
+Research park,Learning Centre,413
+Learning Centre,Mechanical Science Block,337
+Learning Centre,Sunflower Block,50
+Learning Centre,Western Wing - IB Block,116
+Learning Centre,Eastern Wing - AS Block,445
+Learning Centre,Research park,179
+Learning Centre,Learning Centre,0

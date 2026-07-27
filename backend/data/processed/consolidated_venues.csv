@@ -1,0 +1,282 @@
+venue_name,venue_type,block,floor,capacity,projector,led_tv,smart_board,ac,wifi,cctv,audio_video,num_pcs,department_preference,status
+ME002,Classroom,Mechanical Science Block,Ground floor,8,1,1,1,0,1,1,0,1,Agri,Active
+ME004,Classroom,Mechanical Science Block,Ground floor,18,1,1,1,0,1,1,0,1,Agri,Active
+ME005,Classroom,Mechanical Science Block,Ground floor,8,1,1,1,0,1,1,0,1,Agri,Active
+ME101,Classroom,Mechanical Science Block,1st Floor,90,1,1,1,1,1,1,1,1,Mech,Active
+ME102,Classroom,Mechanical Science Block,1st Floor,90,1,1,1,1,1,1,1,1,Mech,Active
+ME107,Classroom,Mechanical Science Block,1st Floor,90,1,1,1,1,1,1,1,1,Mech,Active
+ME108,Classroom,Mechanical Science Block,1st Floor,90,1,1,1,1,1,1,1,1,Mech,Active
+ME201,Classroom,Mechanical Science Block,2nd Floor,90,1,1,1,1,1,1,1,1,AIML,Active
+ME202,Classroom,Mechanical Science Block,2nd Floor,90,1,1,1,1,1,1,1,1,AIML,Active
+ME203,Classroom,Mechanical Science Block,2nd Floor,90,1,1,1,1,1,1,1,1,AIML,Active
+ME204,Classroom,Mechanical Science Block,2nd Floor,90,1,1,1,1,1,1,1,1,AIML,Active
+ME205,Classroom,Mechanical Science Block,2nd Floor,90,1,1,1,1,1,1,1,1,AIML,Active
+ME206,Classroom,Mechanical Science Block,2nd Floor,90,1,1,1,1,1,1,1,1,AIML,Active
+ME301,Classroom,Mechanical Science Block,3rd Floor,90,1,1,1,1,1,1,1,1,AIDS / ISE / CSD / CT / CSBS,Active
+ME302,Classroom,Mechanical Science Block,3rd Floor,90,1,1,1,1,1,1,1,1,General,Active
+ME303,Classroom,Mechanical Science Block,3rd Floor,90,1,1,1,1,1,1,1,1,General,Active
+ME304,Classroom,Mechanical Science Block,3rd Floor,90,1,1,1,1,1,1,1,1,General,Active
+ME305,Classroom,Mechanical Science Block,3rd Floor,90,1,1,1,1,1,1,1,1,General,Active
+ME306,Classroom,Mechanical Science Block,3rd Floor,90,1,1,1,1,1,1,1,1,General,Active
+ME103,PG Small Hall,Mechanical Science Block,1st Floor,40,0,0,0,0,1,0,0,0,CSBS,Active
+ME104,PG Small Hall,Mechanical Science Block,1st Floor,40,0,0,0,0,1,0,0,0,CT,Active
+ME105,PG Small Hall,Mechanical Science Block,1st Floor,12,1,1,1,0,1,1,0,1,CSD,Active
+ME106,PG Small Hall,Mechanical Science Block,1st Floor,18,1,1,1,0,1,1,0,1,AIML,Active
+Mech Smart class,Smart Class,Mechanical Science Block,Ground Floor,32,1,1,1,0,1,1,1,1,Mech,Active
+Mech library,Library,Mechanical Science Block,Ground Floor,40,1,1,1,0,1,1,0,4,Mech,Active
+Mech Conferencee Room,CONFERENCE HALL,Mechanical Science Block,Ground Floor,10,1,1,0,0,0,0,1,0,Mech,Active
+Cyber security Lab,Lab,Mechanical Science Block,Ground Floor,60,1,1,1,0,1,1,1,1,Mech,Active
+Thermal engineering lab,Lab,Mechanical Science Block,Ground Floor,24,0,0,0,0,0,0,0,0,Mech,Active
+Fluid Mechanics and Machinery lab,Lab,Mechanical Science Block,Ground Floor,32,0,0,0,0,0,0,0,0,Mech,Active
+Strength of materials,Lab,Mechanical Science Block,Ground Floor,48,0,0,0,0,0,0,0,0,Mech,Active
+Kinematics and Dynamics Lab,Lab,Mechanical Science Block,Ground Floor,34,0,0,0,0,0,0,0,0,Mech,Active
+Metallargy Lab,Lab,Mechanical Science Block,Ground Floor,24,0,0,0,0,0,0,0,0,Mech,Active
+Computer lab - (18),Lab,Mechanical Science Block,1st Floor,89,1,1,1,1,1,1,1,90,CT,Active
+Computer Lab  (19) - Harita Lab,Lab,Mechanical Science Block,1st Floor,39,1,1,1,0,1,1,1,40,Agri,Active
+Computer Lab (20),Lab,Mechanical Science Block,1st Floor,59,1,1,1,0,1,1,0,60,AI&DS,Active
+Computer Lab (21),Lab,Mechanical Science Block,1st Floor,59,1,1,1,0,1,1,0,60,AI&DS,Active
+Computer Lab (22),Lab,Mechanical Science Block,1st Floor,59,1,1,1,0,1,1,0,60,AI&DS,Active
+Computer Lab (23),Lab,Mechanical Science Block,1st Floor,59,1,1,1,0,1,1,0,60,AI&DS,Active
+Computer Lab  (24) - CAD Lab,Lab,Mechanical Science Block,1st Floor,79,1,1,1,0,0,1,1,80,Mech,Active
+Computer Lab (25),Lab,Mechanical Science Block,1st Floor,59,1,1,1,0,1,1,1,60,AI&DS,Active
+Computer Lab (26),Lab,Mechanical Science Block,1st Floor,69,1,1,1,0,1,1,1,70,ISE / CSD,Active
+Mech Drawing Hall,Drawing Hall,Mechanical Science Block,2nd Floor,150,1,1,0,1,0,1,0,0,Mech,Active
+Agri Lab,Lab,Mechanical Science Block,2nd Floor,45,1,1,1,0,1,0,0,1,Agri,Active
+Godrej lab,Lab,Mechanical Science Block,2nd Floor,56,1,1,0,0,0,0,0,0,Mech,Active
+Industrial Safety lab,Lab,Mechanical Science Block,2nd Floor,18,0,0,0,0,0,0,0,0,Mech,Active
+Heat and Mass Transfer lab,Lab,Mechanical Science Block,2nd Floor,50,0,0,0,0,0,0,0,0,Mech,Active
+Basic work shop,Lab,Mechanical Science Block,Under ground,40,0,0,0,0,0,0,0,0,Mech,Active
+Metrology Lab,Lab,Mechanical Science Block,Ground floor,4,0,0,0,0,0,0,0,0,Mech,Active
+SF B01,Classroom,Sunflower Block,under ground,80,1,1,1,1,1,1,1,1,IT,Active
+SF B02,Classroom,Sunflower Block,under ground,80,1,1,1,1,1,1,1,1,IT,Active
+SF B03,Classroom,Sunflower Block,under ground,80,1,1,1,1,1,1,1,1,IT,Active
+SF 001,Classroom,Sunflower Block,Ground,80,1,1,1,1,1,1,1,1,IT,Active
+SF 002,Classroom,Sunflower Block,Ground,80,1,1,1,1,1,1,1,1,IT,Active
+SF 101,Classroom,Sunflower Block,First Floor,80,1,1,1,1,0,1,1,1,CSE,Active
+SF 102,Classroom,Sunflower Block,First Floor,80,1,1,1,1,0,1,1,1,CSE,Active
+SF 103,Classroom,Sunflower Block,First Floor,80,1,1,1,1,1,1,1,1,CSE,Active
+SF 201,Classroom,Sunflower Block,Second Floor,80,1,1,1,1,0,1,1,1,CSE,Active
+SF 202,Classroom,Sunflower Block,Second Floor,80,1,1,1,1,0,1,1,1,CSE,Active
+SF 203,Classroom,Sunflower Block,Second Floor,80,1,1,1,1,0,1,1,1,CSE,Active
+SUN FLOWER BLOCK - SEMINAR HALL I,SEMINAR HALL,Sunflower Block,under ground,304,0,0,0,1,0,0,0,1,CSE,Active
+SUN FLOWER BLOCK - SEMINAR HALL II,SEMINAR HALL,Sunflower Block,under ground,180,0,0,0,1,0,0,0,1,IT,Active
+SUN FLOWER BLOCK - SEMINAR HALL III,SEMINAR HALL,Sunflower Block,Second Floor,195,0,0,0,1,0,0,0,1,COLLEGE,Active
+MBA SYNDICATE ROOM,Syndicate Room,Sunflower Block,Semi Basement,13,1,1,1,0,1,1,1,1,MBA,Active
+Class Room 1,Classroom,Sunflower Block,Semi Basement,60,1,1,1,0,1,1,1,1,MBA,Active
+Class Room 2,Classroom,Sunflower Block,Semi Basement,60,1,1,1,0,1,1,1,1,MBA,Active
+Tutorial Hall,Tutorial Hall,Sunflower Block,Semi Basement,28,1,1,1,0,0,1,1,1,MBA,Active
+BAS Lab(Computer Lab 1),BAS Lab,Sunflower Block,Semi Basement,40,1,1,1,0,1,1,1,40,MBA,Active
+BOARD ROOM,BOARD ROOM,Sunflower Block,Ground,12,1,1,0,0,0,0,0,0,COLLEGE,Active
+IT DISCUSSION ROOM,DISCUSSION ROOM,Sunflower Block,Ground,10,1,1,1,0,0,0,0,1,IT,Active
+CSE DISCUSSION ROOM,DISCUSSION ROOM,Sunflower Block,First Floor,15,1,1,1,0,0,0,0,1,CSE,Active
+Artificial Intelligence Lab(COMPUTER LAB 2),COMPUTER LAB,Sunflower Block,Ground,71,1,1,1,0,1,1,0,71,IT,Active
+Data Mining Lab(COMPUTER LAB 3),COMPUTER LAB,Sunflower Block,Ground,59,1,1,1,0,1,1,0,60,IT,Active
+Cloud Computing(COMPUTER LAB 4),COMPUTER LAB,Sunflower Block,Ground,59,1,1,1,0,1,1,0,60,IT,Active
+Database management system(computer lab 5),COMPUTER LAB,Sunflower Block,Ground,59,1,1,1,0,1,1,0,60,IT,Active
+Programming Lab(COMPUTER LAB 6),COMPUTER LAB,Sunflower Block,Ground,59,1,1,1,0,1,1,0,60,IT,Active
+COMPUTER LAB - 7,COMPUTER LAB,Sunflower Block,First Floor,71,1,1,1,0,1,1,0,71,CSE,Active
+COMPUTER LAB - 8,COMPUTER LAB,Sunflower Block,First Floor,59,1,1,1,0,1,1,0,60,CSE,Active
+COMPUTER LAB - 9,COMPUTER LAB,Sunflower Block,First Floor,59,1,1,1,0,1,1,0,60,CSE,Active
+COMPUTER LAB - 10,COMPUTER LAB,Sunflower Block,First Floor,59,1,1,1,0,1,1,0,60,CSE,Active
+COMPUTER LAB - 11,COMPUTER LAB,Sunflower Block,First Floor,59,1,1,1,0,1,1,0,60,CSE,Active
+COMPUTER LAB - 12,COMPUTER LAB,Sunflower Block,Second Floor,59,1,1,1,0,1,1,0,60,AIML,Active
+Data Structure Lab (Computer  Lab-13),COMPUTER LAB,Sunflower Block,Second Floor,59,1,1,1,0,1,1,0,60,AIML,Active
+Artificial Intellicence Lab (Computer  Lab-14),COMPUTER LAB,Sunflower Block,Second Floor,29,1,1,1,0,1,1,0,30,AIML,Active
+Machine Learning  Lab (Computer  Lab-15),COMPUTER LAB,Sunflower Block,Second Floor,29,1,1,1,0,1,1,0,30,AIML,Active
+Programming  Lab (Computer  Lab-16),COMPUTER LAB,Sunflower Block,Second Floor,29,1,1,1,0,1,1,0,30,AIML,Active
+Programming Lab (Computer  Lab-17),COMPUTER LAB,Sunflower Block,Second Floor,29,1,1,1,0,1,1,0,30,AIML,Active
+FESEM LAB,SPECIAL LAB,Sunflower Block,under ground,40,0,0,0,0,0,1,0,4,SPECIAL LAB,Active
+WW 101,Classroom,Western Wing - IB Block,1,50,0,0,0,0,1,0,0,0,OLD MECH,Active
+WW 102,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,General,Active
+WW 103,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,General,Active
+WW 104,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,1,0,0,OLD MECH,Active
+WW 105,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,General,Active
+WW 106,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,General,Active
+WW 201,Classroom,Western Wing - IB Block,2,50,0,0,0,0,0,0,0,0,General,Active
+WW 202,Classroom,Western Wing - IB Block,2,50,0,0,0,0,0,1,0,0,OLD MECH,Active
+WW 203,Classroom,Western Wing - IB Block,2,64,0,0,0,0,1,1,0,0,OLD MECH,Active
+WW 204,Classroom,Western Wing - IB Block,2,76,0,0,0,0,1,1,0,0,OLD MECH,Active
+WW 205,Classroom,Western Wing - IB Block,2,40,0,0,0,0,1,1,0,0,OLD MECH,Active
+WW 107,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,EEE,Active
+WW 108,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,EEE,Active
+WW 109,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,EEE,Active
+WW 110,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,EEE,Active
+WW 111,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,EEE,Active
+WW 112,Classroom,Western Wing - IB Block,1,50,0,0,0,0,0,0,0,0,EEE,Active
+WW 206,Classroom,Western Wing - IB Block,2,100,0,0,0,1,0,0,0,0,EEE,Active
+WW 207,Classroom,Western Wing - IB Block,2,100,0,0,0,1,0,0,0,0,EEE,Active
+WW 208,Classroom,Western Wing - IB Block,2,60,0,0,0,0,0,0,0,0,EEE,Active
+WW 209,Classroom,Western Wing - IB Block,2,60,0,0,0,0,0,0,0,0,EEE,Active
+WW 210,Classroom,Western Wing - IB Block,2,60,0,0,0,0,0,0,0,0,EEE,Active
+WW 113,Classroom,Western Wing - IB Block,1,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 114,Classroom,Western Wing - IB Block,1,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 115,Classroom,Western Wing - IB Block,1,60,1,1,1,0,1,1,0,1,EIE BLOCK,Active
+WW 117,Classroom,Western Wing - IB Block,1,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 118,Classroom,Western Wing - IB Block,1,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 211,Classroom,Western Wing - IB Block,2,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 212,Classroom,Western Wing - IB Block,2,100,1,1,1,1,1,1,1,1,EIE BLOCK,Active
+WW 213,Classroom,Western Wing - IB Block,2,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 214,Classroom,Western Wing - IB Block,2,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 215,Classroom,Western Wing - IB Block,2,60,1,1,1,0,1,1,1,1,EIE BLOCK,Active
+WW 002,Classroom,Western Wing - IB Block,0,40,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 003,Classroom,Western Wing - IB Block,0,40,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 004,Classroom,Western Wing - IB Block,0,40,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 005,Classroom,Western Wing - IB Block,0,50,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 006,Classroom,Western Wing - IB Block,0,60,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 007,Classroom,Western Wing - IB Block,0,60,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 008,Classroom,Western Wing - IB Block,0,60,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 011,Classroom,Western Wing - IB Block,0,60,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 012,Classroom,Western Wing - IB Block,0,60,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 216,Classroom,Western Wing - IB Block,2,40,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 217,Classroom,Western Wing - IB Block,2,40,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 218,Classroom,Western Wing - IB Block,2,60,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 219,Classroom,Western Wing - IB Block,2,60,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 220,Classroom,Western Wing - IB Block,2,40,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 221,Classroom,Western Wing - IB Block,2,40,1,1,1,0,1,1,1,1,BT BLOCK,Active
+WW 222,Classroom,Western Wing - IB Block,2,100,1,1,1,1,1,1,1,1,BT BLOCK,Active
+WW 223,Classroom,Western Wing - IB Block,2,100,1,1,1,1,1,1,1,1,BT BLOCK,Active
+WW 224,Classroom,Western Wing - IB Block,2,100,1,1,1,1,1,1,1,1,BT BLOCK,Active
+WW 225,Classroom,Western Wing - IB Block,2,100,1,1,1,1,1,1,1,1,BT BLOCK,Active
+WW 226,Classroom,Western Wing - IB Block,2,100,1,1,1,1,1,1,1,1,BT BLOCK,Active
+WW 227,Classroom,Western Wing - IB Block,2,100,1,1,1,1,1,1,1,1,BT BLOCK,Active
+IECC Launch Pad,Classroom,Western Wing - IB Block,0,40,0,0,0,0,1,1,0,0,IECC,Active
+EEE smart class,Smart Class,Western Wing - IB Block,0,70,1,1,1,0,1,1,1,1,EEE,Active
+EIE smart class,Smart Class,Western Wing - IB Block,2,50,1,1,1,0,0,0,1,1,BT BLOCK,Active
+EIE CC Lab,laboratory,Western Wing - IB Block,0,59,1,1,1,0,1,1,1,60,EIE BLOCK,Active
+TRAINING & PLACEMENT CONFERENCE HALL I,CONFERENCE HALL,Western Wing - IB Block,0,13,1,1,0,0,1,0,0,0,BT BLOCK,Active
+TRAINING & PLACEMENT CONFERENCE HALL II,CONFERENCE HALL,Western Wing - IB Block,0,13,0,0,0,0,1,0,0,0,BT BLOCK,Active
+TBI CONFERENCE HALL,CONFERENCE HALL,Western Wing - IB Block,1,15,1,1,1,0,1,0,0,1,BT BLOCK,Active
+EIE CONFERENCE HALL,CONFERENCE HALL,Western Wing - IB Block,2,24,1,1,1,0,0,0,0,1,BT BLOCK,Active
+EIE SEMINAR HALL,SEMINAR HALL,Western Wing - IB Block,0,160,1,1,1,1,1,1,1,1,BT BLOCK,Active
+BIOTECH SEMINAR HALL,SEMINAR HALL,Western Wing - IB Block,0,120,1,1,1,1,1,1,1,1,BT BLOCK,Active
+EEE SEMINAR HALL,SEMINAR HALL,Western Wing - IB Block,0,160,1,1,1,1,1,1,1,1,EEE,Active
+IECC SEMINAR HALL,SEMINAR HALL,Western Wing - IB Block,0,160,1,1,1,1,1,1,1,1,IECC,Active
+TBI Conference Hall - Second Floor,DISCUSSION ROOM,Western Wing - IB Block,2,10,0,0,0,0,0,0,0,0,General,Active
+Bio Process laboratory,laboratory,Western Wing - IB Block,1,48,0,0,0,0,1,1,0,0,BT BLOCK,Active
+Internet Center,laboratory,Western Wing - IB Block,0,100,1,1,1,1,1,1,0,63,BT BLOCK,Active
+Centre of Excellence,laboratory,Western Wing - IB Block,0,70,0,0,0,0,0,0,0,0,General,Active
+PLC Gurugulam,laboratory,Western Wing - IB Block,2,70,0,0,0,0,0,1,0,50,BT BLOCK,Active
+EEE CC LAB,laboratory,Western Wing - IB Block,1,130,1,1,1,1,1,1,1,130,,Active
+Gurugulam - Embedded Lab,laboratory,Western Wing - IB Block,1,130,0,0,0,1,1,1,0,3,BT BLOCK,Active
+Mechatronics - SEW EURODRIVE Centre for Drives and Automation,laboratory,Western Wing - IB Block,1,26,1,1,1,0,1,1,1,14,Mechtronics,Active
+Mechatronics - Sensor and Instrumentation Laboratory,laboratory,Western Wing - IB Block,1,36,1,1,0,0,1,1,1,0,Mechtronics,Active
+Mechatronics - Conference Room,laboratory,Western Wing - IB Block,1,7,0,0,0,0,1,0,0,0,Mechtronics,Active
+Mechatronics - Computer Center 49,laboratory,Western Wing - IB Block,1,30,1,1,1,0,1,1,1,30,,Active
+Process control laboratory,laboratory,Western Wing - IB Block,0,16,0,0,0,0,1,1,0,7,EIE,Active
+PSKILL Lab 1,laboratory,Western Wing - IB Block,1,66,0,1,0,0,1,1,1,1,EIE,Active
+PSKILL Lab 2,laboratory,Western Wing - IB Block,1,66,0,1,0,0,1,1,1,1,EIE,Active
+PSKILL Lab 3,laboratory,Western Wing - IB Block,1,66,0,1,0,0,1,1,1,1,EIE,Active
+Industrial instrumetation Laboratary,laboratory,Western Wing - IB Block,1,21,0,0,0,0,1,0,0,1,EIE,Active
+Electronics laboratary,laboratory,Western Wing - IB Block,1,54,0,0,0,0,1,1,0,1,EIE,Active
+Research laboratary,laboratory,Western Wing - IB Block,1,36,0,0,0,0,1,1,0,1,EEE,Active
+Power electronics laboratary,laboratory,Western Wing - IB Block,1,72,0,0,0,0,1,1,0,1,EEE,Active
+Advanced embedded system laboratary,laboratory,Western Wing - IB Block,1,72,0,0,0,0,1,1,0,1,EEE,Active
+EW 101,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 102,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 103,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 104,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 105,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 106,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 201,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 202,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 203,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,Textile,Active
+EW 204,Classroom,Eastern Wing - AS Block,2,40,1,1,1,0,1,1,1,1,Textile,Active
+EW 205,Classroom,Eastern Wing - AS Block,2,40,1,1,1,0,1,1,1,1,Textile,Active
+EW 206,Classroom,Eastern Wing - AS Block,2,100,1,1,1,1,1,1,1,1,Textile,Active
+EW 107,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 108,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 109,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 111,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 112,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 207,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 208,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 209,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,ECE,Active
+EW 210,Classroom,Eastern Wing - AS Block,2,40,1,1,1,0,1,1,1,1,ECE,Active
+EW 211,Classroom,Eastern Wing - AS Block,2,40,1,1,1,0,1,1,1,1,ECE,Active
+EW 212,Classroom,Eastern Wing - AS Block,2,100,1,1,1,1,1,1,1,1,ECE,Active
+EW 113,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,CIVIL,Active
+EW 114,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,CIVIL,Active
+EW 116,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,CIVIL,Active
+EW 117,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,CIVIL,Active
+EW 118,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,CIVIL,Active
+EW 115,Classroom,Eastern Wing - AS Block,1,60,1,1,1,0,1,1,1,1,CIVIL,Active
+EW 214,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,BME,Active
+EW 215,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,BME,Active
+EW 216,Classroom,Eastern Wing - AS Block,2,40,1,1,1,0,0,1,1,1,BME,Active
+EW 217,Classroom,Eastern Wing - AS Block,2,40,1,1,1,0,1,1,1,1,BME,Active
+EW 218,Classroom,Eastern Wing - AS Block,2,100,1,1,1,1,1,1,1,1,BME,Active
+EW 213,Classroom,Eastern Wing - AS Block,2,60,1,1,1,0,1,1,1,1,BME,Active
+Special lab Conference Hall 1,CONFERENCE HALL,Eastern Wing - AS Block,2,10,0,0,0,0,0,1,0,0,SPECIAL LAB,Active
+Special lab Conference Hall 2,CONFERENCE HALL,Eastern Wing - AS Block,2,10,0,0,0,0,0,1,0,0,SPECIAL LAB,Active
+TEXTILE SEMINAR HALL,SEMINAR HALL,Eastern Wing - AS Block,0,180,1,1,1,1,1,1,1,1,Textile,Active
+ECE SEMINAR HALL,SEMINAR HALL,Eastern Wing - AS Block,0,180,1,1,1,1,1,1,1,1,ECE,Active
+CIVIL CONFERENCE HALL,SEMINAR HALL,Eastern Wing - AS Block,0,30,1,1,1,0,1,1,1,1,Civil,Active
+Full Stack lab,Special Lab,Eastern Wing - AS Block,2,85,0,0,0,1,0,0,0,7,SPECIAL LAB,Active
+Data Science Lab,Special Lab,Eastern Wing - AS Block,2,90,0,0,0,1,0,1,0,0,SPECIAL LAB,Active
+IOT Lab,Special Lab,Eastern Wing - AS Block,2,30,0,0,0,0,0,0,0,1,SPECIAL LAB,Active
+HACKATHON LAB,Special Lab,Eastern Wing - AS Block,2,75,0,0,0,0,1,1,0,0,SPECIAL LAB,Active
+DATA SCIENCE LAB 2,Special Lab,Eastern Wing - AS Block,2,30,0,0,0,0,1,1,0,0,SPECIAL LAB,Active
+AI Lab,Special Lab,Eastern Wing - AS Block,0,10,0,0,0,0,0,1,0,2,SPECIAL LAB,Active
+Embeded Lab,Special Lab,Eastern Wing - AS Block,1,100,0,0,0,1,0,0,0,6,SPECIAL LAB,Active
+XR Studio,Special Lab,Eastern Wing - AS Block,0,20,0,0,0,0,1,1,0,13,SPECIAL LAB,Active
+Smart AGRI,Special Lab,Eastern Wing - AS Block,-1,40,1,1,1,0,1,1,0,1,SPECIAL LAB,Active
+Robotics and Automation Lab,Special Lab,Eastern Wing - AS Block,1,30,0,0,0,0,0,0,0,4,SPECIAL LAB,Active
+CPS LAB 1,laboratory,Eastern Wing - AS Block,0,40,0,1,0,0,1,1,1,1,ECE,Active
+CPS LAB 2,laboratory,Eastern Wing - AS Block,0,40,0,1,0,0,1,1,1,1,ECE,Active
+Physics Lab 1,laboratory,Eastern Wing - AS Block,1,150,1,1,1,1,0,0,1,2,Physics,Active
+IOT Lab 1,laboratory,Eastern Wing - AS Block,2,45,0,0,0,0,1,1,0,0,ECE,Active
+IOT Lab 2,laboratory,Eastern Wing - AS Block,2,45,0,0,0,0,1,1,0,0,ECE,Active
+Physics Lab 2,laboratory,Eastern Wing - AS Block,2,100,1,1,1,1,1,1,1,1,Physics,Active
+Chemistry Lab 1,laboratory,Eastern Wing - AS Block,1,100,0,1,0,1,1,1,1,1,Chemistry,Active
+Chemistry Lab 2,laboratory,Eastern Wing - AS Block,1,100,0,1,0,1,0,0,1,2,Chemstry,Active
+CPS LAB 3,laboratory,Eastern Wing - AS Block,0,39,0,1,0,0,1,1,1,1,ECE,Active
+Analog Communication Lab,laboratory,Eastern Wing - AS Block,2,36,1,1,1,0,1,1,1,1,ECE,Active
+Digital Communication Lab,laboratory,Eastern Wing - AS Block,2,36,0,1,0,0,1,1,1,1,ECE,Active
+Microwave Lab,laboratory,Eastern Wing - AS Block,2,48,0,1,0,0,1,1,1,1,ECE,Active
+Network Lab,laboratory,Eastern Wing - AS Block,1,53,1,1,1,0,1,1,1,1,ECE,Active
+PG Communication Lab,laboratory,Eastern Wing - AS Block,0,21,0,1,0,0,1,1,1,1,ECE,Active
+DSP Lab,laboratory,Eastern Wing - AS Block,0,35,0,1,0,0,1,1,1,1,ECE,Active
+VLSI Design,laboratory,Eastern Wing - AS Block,2,40,0,1,0,0,0,1,1,1,ECE,Active
+Microcontroller Lab,laboratory,Eastern Wing - AS Block,2,26,0,1,0,0,1,1,1,1,ECE,Active
+Digital Electronics Lab,laboratory,Eastern Wing - AS Block,2,48,0,1,0,0,0,1,1,1,ECE,Active
+Signal Processing Lab,laboratory,Eastern Wing - AS Block,0,40,0,1,0,0,1,1,1,1,ECE,Active
+PCB Design Lab,laboratory,Eastern Wing - AS Block,0,40,1,1,1,0,1,1,1,1,ECE,Active
+PCB Fabrication Lab,laboratory,Eastern Wing - AS Block,0,36,0,0,0,0,1,1,0,0,ECE,Active
+Sensor and Tamil Computing Lab,laboratory,Eastern Wing - AS Block,0,20,0,0,0,0,1,1,0,7,SPECIAL LAB,Active
+DRAI Lab,laboratory,Eastern Wing - AS Block,2,40,0,0,0,0,1,0,0,4,SPECIAL LAB,Active
+AI BASED INDUSTRIAL AUTOMATION,laboratory,Eastern Wing - AS Block,2,40,0,1,0,0,1,1,1,1,SPECIAL LAB,Active
+ELCC smart class,Smart Class,Eastern Wing - AS Block,1,40,1,1,1,0,1,0,1,1,ELCC,Active
+Servo Lab,Laboratory,Eastern Wing - AS Block,0,204,1,1,1,1,1,1,1,1,Textiles,Active
+Next generation food laboratary,Laboratory,Eastern Wing - AS Block,1,5,1,1,1,0,1,1,1,1,Food Tech,Active
+Unit operation laboratary,Laboratory,Eastern Wing - AS Block,1,24,1,1,1,0,1,1,1,1,Food Tech,Active
+Food processing laboratary,Laboratory,Eastern Wing - AS Block,1,50,0,0,0,0,1,1,0,0,Food Tech,Active
+Food informatics center,Laboratory,Eastern Wing - AS Block,1,24,0,0,0,0,1,1,0,0,Food Tech,Active
+Baking and confictionary laboratary,Laboratory,Eastern Wing - AS Block,1,10,0,0,0,0,1,1,0,0,Food Tech,Active
+Food innovation center,Laboratory,Eastern Wing - AS Block,1,6,0,0,0,0,1,1,0,0,Food Tech,Active
+Food microbiology,Laboratory,Eastern Wing - AS Block,1,10,0,0,0,0,1,1,0,0,Food Tech,Active
+AE301,Classroom,Research park,3,50,0,0,0,1,0,0,0,0,General,Active
+AE302,Classroom,Research park,3,50,0,0,0,1,0,0,0,0,General,Active
+MH301,Classroom,Research park,3,50,0,0,0,1,0,0,0,1,General,Active
+MH302,Classroom,Research park,3,50,0,0,0,1,0,0,0,1,General,Active
+MH303,Classroom,Research park,3,50,0,0,0,1,0,0,0,1,General,Active
+MH305,Classroom,Research park,3,50,0,0,0,1,0,0,0,1,General,Active
+MH306,Classroom,Research park,3,50,0,0,0,1,0,0,0,1,General,Active
+AE 202,Classroom,Research park,2,50,0,0,0,1,0,0,0,1,General,Active
+Aero DH,Drawing Hall,Research park,1,94,0,0,0,1,0,0,0,0,General,Active
+Aero Conference Hall,CONFERENCE HALL,Research park,0,20,0,0,0,1,0,0,0,0,General,Active
+AERO SEMINAR HALL,SEMINAR HALL,Research park,0,72,1,1,1,1,1,0,0,1,General,Active
+LEARNING CENTRE CONFERENCE HALL - I FLOOR,CONFERENCE HALL,Learning Centre,1,13,1,1,0,1,1,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE CONFERENCE HALL - II FLOOR,CONFERENCE HALL,Learning Centre,2,14,1,1,0,1,0,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE CONFERENCE HALL - III FLOOR,CONFERENCE HALL,Learning Centre,3,14,1,1,0,1,0,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE CONFERENCE HALL - IV FLOOR,CONFERENCE HALL,Learning Centre,4,13,0,0,0,1,0,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 1 I FLOOR,DISCUSSION ROOM,Learning Centre,1,10,0,0,0,1,1,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 2 I FLOOR,DISCUSSION ROOM,Learning Centre,1,10,0,0,0,1,1,1,0,1,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 1 II FLOOR,DISCUSSION ROOM,Learning Centre,2,10,0,0,0,1,1,1,0,1,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 2 II FLOOR,DISCUSSION ROOM,Learning Centre,2,10,0,0,0,1,0,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 1 III FLOOR,DISCUSSION ROOM,Learning Centre,3,10,0,0,0,1,0,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 2 III FLOOR,DISCUSSION ROOM,Learning Centre,3,10,0,0,0,1,1,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 1 IV FLOOR,DISCUSSION ROOM,Learning Centre,4,10,0,0,0,1,1,1,0,0,LEARNING CENTRE,Active
+LEARNING CENTRE DISCUSSION ROOM- 2 IV FLOOR,DISCUSSION ROOM,Learning Centre,4,10,0,0,0,1,1,1,0,0,LEARNING CENTRE,Active
+Library First Floor,Self Study Hall,Learning Centre,1,120,0,1,0,1,1,1,1,1,LEARNING CENTRE,Active
+Library Second Floor,Self Study Hall,Learning Centre,2,150,0,1,0,1,1,1,1,4,LEARNING CENTRE,Active
+Library Third Floor,Self Study Hall,Learning Centre,3,150,0,1,0,1,1,1,1,2,LEARNING CENTRE,Active

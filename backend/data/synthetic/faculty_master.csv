@@ -1,0 +1,136 @@
+faculty_id,name,department,preferred_building,preferred_room_type
+FAC5001,Dr. Faculty_5001,CSE,Eastern Wing - AS Block,Classroom
+FAC5002,Dr. Faculty_5002,CSE,Sunflower Block,Seminar
+FAC5003,Dr. Faculty_5003,CSE,Western Wing - IB Block,Lab
+FAC5004,Dr. Faculty_5004,CSE,Research park,Seminar
+FAC5005,Dr. Faculty_5005,CSE,Learning Centre,Classroom
+FAC5006,Dr. Faculty_5006,CSE,Research park,Lab
+FAC5007,Dr. Faculty_5007,CSE,Mechanical Science Block,Classroom
+FAC5008,Dr. Faculty_5008,CSE,Eastern Wing - AS Block,Seminar
+FAC5009,Dr. Faculty_5009,CSE,Eastern Wing - AS Block,Seminar
+FAC5010,Dr. Faculty_5010,CSE,Mechanical Science Block,Lab
+FAC5011,Dr. Faculty_5011,CSE,Research park,Classroom
+FAC5012,Dr. Faculty_5012,CSE,Mechanical Science Block,Classroom
+FAC5013,Dr. Faculty_5013,CSE,Eastern Wing - AS Block,Classroom
+FAC5014,Dr. Faculty_5014,CSE,Learning Centre,Classroom
+FAC5015,Dr. Faculty_5015,CSE,Sunflower Block,Lab
+FAC5016,Dr. Faculty_5016,AIML,Sunflower Block,Seminar
+FAC5017,Dr. Faculty_5017,AIML,Sunflower Block,Lab
+FAC5018,Dr. Faculty_5018,AIML,Mechanical Science Block,Seminar
+FAC5019,Dr. Faculty_5019,AIML,Western Wing - IB Block,Classroom
+FAC5020,Dr. Faculty_5020,AIML,Mechanical Science Block,Classroom
+FAC5021,Dr. Faculty_5021,AIML,Research park,Seminar
+FAC5022,Dr. Faculty_5022,AIML,Eastern Wing - AS Block,Lab
+FAC5023,Dr. Faculty_5023,AIML,Mechanical Science Block,Seminar
+FAC5024,Dr. Faculty_5024,AIML,Western Wing - IB Block,Classroom
+FAC5025,Dr. Faculty_5025,AIML,Mechanical Science Block,Classroom
+FAC5026,Dr. Faculty_5026,AIML,Sunflower Block,Lab
+FAC5027,Dr. Faculty_5027,AIML,Western Wing - IB Block,Classroom
+FAC5028,Dr. Faculty_5028,AIML,Western Wing - IB Block,Seminar
+FAC5029,Dr. Faculty_5029,AIML,Mechanical Science Block,Lab
+FAC5030,Dr. Faculty_5030,AIML,Learning Centre,Classroom
+FAC5031,Dr. Faculty_5031,AIDS,Eastern Wing - AS Block,Seminar
+FAC5032,Dr. Faculty_5032,AIDS,Research park,Seminar
+FAC5033,Dr. Faculty_5033,AIDS,Learning Centre,Lab
+FAC5034,Dr. Faculty_5034,AIDS,Mechanical Science Block,Lab
+FAC5035,Dr. Faculty_5035,AIDS,Eastern Wing - AS Block,Lab
+FAC5036,Dr. Faculty_5036,AIDS,Sunflower Block,Classroom
+FAC5037,Dr. Faculty_5037,AIDS,Mechanical Science Block,Seminar
+FAC5038,Dr. Faculty_5038,AIDS,Mechanical Science Block,Classroom
+FAC5039,Dr. Faculty_5039,AIDS,Research park,Seminar
+FAC5040,Dr. Faculty_5040,AIDS,Research park,Classroom
+FAC5041,Dr. Faculty_5041,AIDS,Mechanical Science Block,Seminar
+FAC5042,Dr. Faculty_5042,AIDS,Sunflower Block,Seminar
+FAC5043,Dr. Faculty_5043,AIDS,Learning Centre,Seminar
+FAC5044,Dr. Faculty_5044,AIDS,Sunflower Block,Lab
+FAC5045,Dr. Faculty_5045,AIDS,Learning Centre,Lab
+FAC5046,Dr. Faculty_5046,ECE,Mechanical Science Block,Seminar
+FAC5047,Dr. Faculty_5047,ECE,Learning Centre,Lab
+FAC5048,Dr. Faculty_5048,ECE,Learning Centre,Seminar
+FAC5049,Dr. Faculty_5049,ECE,Sunflower Block,Lab
+FAC5050,Dr. Faculty_5050,ECE,Sunflower Block,Lab
+FAC5051,Dr. Faculty_5051,ECE,Mechanical Science Block,Lab
+FAC5052,Dr. Faculty_5052,ECE,Sunflower Block,Classroom
+FAC5053,Dr. Faculty_5053,ECE,Mechanical Science Block,Lab
+FAC5054,Dr. Faculty_5054,ECE,Sunflower Block,Classroom
+FAC5055,Dr. Faculty_5055,ECE,Learning Centre,Lab
+FAC5056,Dr. Faculty_5056,ECE,Sunflower Block,Lab
+FAC5057,Dr. Faculty_5057,ECE,Learning Centre,Lab
+FAC5058,Dr. Faculty_5058,ECE,Eastern Wing - AS Block,Seminar
+FAC5059,Dr. Faculty_5059,ECE,Eastern Wing - AS Block,Lab
+FAC5060,Dr. Faculty_5060,ECE,Eastern Wing - AS Block,Lab
+FAC5061,Dr. Faculty_5061,EEE,Mechanical Science Block,Seminar
+FAC5062,Dr. Faculty_5062,EEE,Western Wing - IB Block,Seminar
+FAC5063,Dr. Faculty_5063,EEE,Eastern Wing - AS Block,Seminar
+FAC5064,Dr. Faculty_5064,EEE,Western Wing - IB Block,Lab
+FAC5065,Dr. Faculty_5065,EEE,Eastern Wing - AS Block,Classroom
+FAC5066,Dr. Faculty_5066,EEE,Western Wing - IB Block,Seminar
+FAC5067,Dr. Faculty_5067,EEE,Western Wing - IB Block,Lab
+FAC5068,Dr. Faculty_5068,EEE,Learning Centre,Seminar
+FAC5069,Dr. Faculty_5069,EEE,Mechanical Science Block,Seminar
+FAC5070,Dr. Faculty_5070,EEE,Learning Centre,Lab
+FAC5071,Dr. Faculty_5071,EEE,Mechanical Science Block,Seminar
+FAC5072,Dr. Faculty_5072,EEE,Learning Centre,Classroom
+FAC5073,Dr. Faculty_5073,EEE,Eastern Wing - AS Block,Lab
+FAC5074,Dr. Faculty_5074,EEE,Learning Centre,Classroom
+FAC5075,Dr. Faculty_5075,EEE,Mechanical Science Block,Seminar
+FAC5076,Dr. Faculty_5076,MECH,Mechanical Science Block,Seminar
+FAC5077,Dr. Faculty_5077,MECH,Western Wing - IB Block,Seminar
+FAC5078,Dr. Faculty_5078,MECH,Mechanical Science Block,Seminar
+FAC5079,Dr. Faculty_5079,MECH,Mechanical Science Block,Seminar
+FAC5080,Dr. Faculty_5080,MECH,Mechanical Science Block,Seminar
+FAC5081,Dr. Faculty_5081,MECH,Learning Centre,Lab
+FAC5082,Dr. Faculty_5082,MECH,Sunflower Block,Lab
+FAC5083,Dr. Faculty_5083,MECH,Western Wing - IB Block,Seminar
+FAC5084,Dr. Faculty_5084,MECH,Western Wing - IB Block,Lab
+FAC5085,Dr. Faculty_5085,MECH,Sunflower Block,Lab
+FAC5086,Dr. Faculty_5086,MECH,Learning Centre,Lab
+FAC5087,Dr. Faculty_5087,MECH,Eastern Wing - AS Block,Seminar
+FAC5088,Dr. Faculty_5088,MECH,Research park,Lab
+FAC5089,Dr. Faculty_5089,MECH,Eastern Wing - AS Block,Classroom
+FAC5090,Dr. Faculty_5090,MECH,Western Wing - IB Block,Classroom
+FAC5091,Dr. Faculty_5091,CIVIL,Western Wing - IB Block,Classroom
+FAC5092,Dr. Faculty_5092,CIVIL,Mechanical Science Block,Seminar
+FAC5093,Dr. Faculty_5093,CIVIL,Western Wing - IB Block,Lab
+FAC5094,Dr. Faculty_5094,CIVIL,Mechanical Science Block,Seminar
+FAC5095,Dr. Faculty_5095,CIVIL,Western Wing - IB Block,Classroom
+FAC5096,Dr. Faculty_5096,CIVIL,Eastern Wing - AS Block,Lab
+FAC5097,Dr. Faculty_5097,CIVIL,Sunflower Block,Seminar
+FAC5098,Dr. Faculty_5098,CIVIL,Mechanical Science Block,Lab
+FAC5099,Dr. Faculty_5099,CIVIL,Learning Centre,Classroom
+FAC5100,Dr. Faculty_5100,CIVIL,Eastern Wing - AS Block,Lab
+FAC5101,Dr. Faculty_5101,CIVIL,Learning Centre,Seminar
+FAC5102,Dr. Faculty_5102,CIVIL,Sunflower Block,Seminar
+FAC5103,Dr. Faculty_5103,CIVIL,Mechanical Science Block,Seminar
+FAC5104,Dr. Faculty_5104,CIVIL,Western Wing - IB Block,Classroom
+FAC5105,Dr. Faculty_5105,CIVIL,Research park,Lab
+FAC5106,Dr. Faculty_5106,IT,Mechanical Science Block,Lab
+FAC5107,Dr. Faculty_5107,IT,Western Wing - IB Block,Seminar
+FAC5108,Dr. Faculty_5108,IT,Research park,Classroom
+FAC5109,Dr. Faculty_5109,IT,Research park,Classroom
+FAC5110,Dr. Faculty_5110,IT,Sunflower Block,Seminar
+FAC5111,Dr. Faculty_5111,IT,Mechanical Science Block,Seminar
+FAC5112,Dr. Faculty_5112,IT,Eastern Wing - AS Block,Seminar
+FAC5113,Dr. Faculty_5113,IT,Research park,Classroom
+FAC5114,Dr. Faculty_5114,IT,Eastern Wing - AS Block,Seminar
+FAC5115,Dr. Faculty_5115,IT,Eastern Wing - AS Block,Seminar
+FAC5116,Dr. Faculty_5116,IT,Learning Centre,Seminar
+FAC5117,Dr. Faculty_5117,IT,Western Wing - IB Block,Classroom
+FAC5118,Dr. Faculty_5118,IT,Eastern Wing - AS Block,Classroom
+FAC5119,Dr. Faculty_5119,IT,Western Wing - IB Block,Classroom
+FAC5120,Dr. Faculty_5120,IT,Sunflower Block,Lab
+FAC5121,Dr. Faculty_5121,TEXTILE,Eastern Wing - AS Block,Seminar
+FAC5122,Dr. Faculty_5122,TEXTILE,Western Wing - IB Block,Classroom
+FAC5123,Dr. Faculty_5123,TEXTILE,Research park,Classroom
+FAC5124,Dr. Faculty_5124,TEXTILE,Mechanical Science Block,Seminar
+FAC5125,Dr. Faculty_5125,TEXTILE,Eastern Wing - AS Block,Classroom
+FAC5126,Dr. Faculty_5126,TEXTILE,Learning Centre,Seminar
+FAC5127,Dr. Faculty_5127,TEXTILE,Learning Centre,Lab
+FAC5128,Dr. Faculty_5128,TEXTILE,Mechanical Science Block,Classroom
+FAC5129,Dr. Faculty_5129,TEXTILE,Mechanical Science Block,Lab
+FAC5130,Dr. Faculty_5130,TEXTILE,Western Wing - IB Block,Classroom
+FAC5131,Dr. Faculty_5131,TEXTILE,Research park,Seminar
+FAC5132,Dr. Faculty_5132,TEXTILE,Western Wing - IB Block,Classroom
+FAC5133,Dr. Faculty_5133,TEXTILE,Western Wing - IB Block,Classroom
+FAC5134,Dr. Faculty_5134,TEXTILE,Learning Centre,Seminar
+FAC5135,Dr. Faculty_5135,TEXTILE,Learning Centre,Lab

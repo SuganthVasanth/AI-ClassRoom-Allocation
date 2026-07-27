@@ -1,0 +1,4 @@
+python-interpreter = "C:/Users/Suganth/AppData/Local/Programs/Python/Python313/python.exe"
+site-package-path = [
+    "C:/Users/Suganth/AppData/Local/Programs/Python/Python313/Lib/site-packages"
+]

@@ -1,0 +1,28 @@
+{
+  "paths": {
+    "venue_master": "Master Venue Details.xlsx",
+    "raw_dir": "data/raw",
+    "processed_dir": "data/processed",
+    "synthetic_dir": "data/synthetic",
+    "models_dir": "models",
+    "db_path": "data/campus_scheduler.db"
+  },
+  "optimization": {
+    "weights": {
+      "distance": 0.4,
+      "capacity_wastage": 0.3,
+      "ml_score": 0.3
+    }
+  },
+  "retraining": {
+    "threshold": 1000
+  },
+  "sheets_to_load": [
+    "Learning Centre",
+    "Eastern Wing - AS Block",
+    "Mechanical Sciences Block",
+    "Western Wing - IB Block",
+    "Research park",
+    "Sunflower Block"
+  ]
+}
