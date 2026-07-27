@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider, useAuth, type UserRole } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './components/Toast';
@@ -18,6 +18,7 @@ import { ProfileScreen } from './screens/ProfileScreen';
 import { SuperAdminScreens } from './screens/SuperAdminScreens';
 import { AdminScreens } from './screens/AdminScreens';
 import { BookingHistoryScreen } from './screens/BookingHistoryScreen';
+import { AvailabilityScreen } from './screens/AvailabilityScreen';
 
 // Constants imports
 import { INITIAL_REQUESTS, MOCK_NOTIFICATIONS, CLASSROOMS } from './constants/mockData';
@@ -32,6 +33,23 @@ function MainApp() {
   const [showSplash, setShowSplash] = useState(true);
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Synchronize component state with URL hash routing
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#/', '') || 'dashboard';
+      setCurrentTab(hash);
+    };
+
+    handleHashChange();
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    window.location.hash = `#/${tab}`;
+  };
 
   // Global Mock States
   const [requests, setRequests] = useState<BookingRequest[]>(INITIAL_REQUESTS);
@@ -148,7 +166,7 @@ function MainApp() {
 
   // Helper autofill for AI assistant request draft
   const handleAutoDraft = (bldId: string, str: number, sub: string) => {
-    setCurrentTab('request');
+    handleTabChange('request');
     showToast('AI smart parameters copied to form! Form draft ready.', 'success');
   };
 
@@ -166,7 +184,7 @@ function MainApp() {
       {/* Sidebar Layout */}
       <Sidebar
         currentTab={currentTab}
-        onChangeTab={setCurrentTab}
+        onChangeTab={handleTabChange}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
@@ -198,8 +216,8 @@ function MainApp() {
             {/* AI Assistant Quick Indicator (Staff/Student only) */}
             {(user.role === 'staff' || user.role === 'student') && (
               <button
-                onClick={() => setCurrentTab('ai')}
-                className="p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-350 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:border-primary/50 dark:hover:border-primary/50 transition-all flex items-center gap-1.5 text-xs font-bold animate-pulse"
+                onClick={() => handleTabChange('ai')}
+                className="p-2 bg-slate-50 hover:bg-slate-105 dark:bg-slate-800 text-slate-650 dark:text-slate-350 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:border-primary/50 dark:hover:border-primary/50 transition-all flex items-center gap-1.5 text-xs font-bold animate-pulse"
                 title="Consult AI assistant"
               >
                 <Sparkles className="w-4 h-4 text-yellow-500" />
@@ -209,7 +227,7 @@ function MainApp() {
 
             {/* Notifications Alert Bell */}
             <button
-              onClick={() => setCurrentTab('notifications')}
+              onClick={() => handleTabChange('notifications')}
               className="relative p-2 bg-slate-50 hover:bg-slate-105 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl transition-all"
             >
               <Bell className="w-5 h-5" />
@@ -222,7 +240,7 @@ function MainApp() {
 
             {/* User Visual Badge */}
             <div 
-              onClick={() => setCurrentTab('profile')}
+              onClick={() => handleTabChange('profile')}
               className="flex items-center gap-2 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 rounded-xl py-1 px-2.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors select-none"
             >
               <img
@@ -230,7 +248,7 @@ function MainApp() {
                 alt={user.name}
                 className="w-6 h-6 rounded-lg object-cover"
               />
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 hidden md:inline truncate max-w-[100px]">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-350 hidden md:inline truncate max-w-[100px]">
                 {user.name.split(' ')[0]}
               </span>
             </div>
@@ -250,7 +268,7 @@ function MainApp() {
 
           {/* Admin specific menus router */}
           {user.role === 'admin' && [
-            'approvals', 'maintenance'
+            'approvals', 'maintenance', 'exams'
           ].includes(currentTab) && (
             <AdminScreens
               subTab={currentTab}
@@ -267,8 +285,12 @@ function MainApp() {
               requests={requests}
               onApproveRequest={handleApproveRequest}
               onRejectRequest={handleRejectRequest}
-              onChangeTab={setCurrentTab}
+              onChangeTab={handleTabChange}
             />
+          )}
+
+          {currentTab === 'availability' && (
+            <AvailabilityScreen />
           )}
 
           {currentTab === 'request' && (

@@ -1,61 +1,134 @@
 import React, { useState, useEffect } from 'react';
-import { BUILDINGS } from '../constants/mockData';
 import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Dropdown } from '../components/Dropdown';
-import { Map, Navigation, Compass, Search, Clock, ArrowRight, CornerUpRight, MoveUp, MapPin, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Compass, ZoomIn, ZoomOut, RotateCcw, MapPin, Search } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { api } from '../services/api';
+
+const BLOCK_CONFIGS: Record<string, { code: string; x: number; y: number; description: string; floors: number }> = {
+  'Western Wing - IB Block': { code: 'IB', x: 22, y: 35, description: 'Information Block - CS & IT labs', floors: 4 },
+  'Eastern Wing - AS Block': { code: 'AS', x: 55, y: 25, description: 'Applied Sciences - ECE & Physics labs', floors: 3 },
+  'Sunflower Block': { code: 'SF', x: 80, y: 45, description: 'Sunflower Lecture Wing', floors: 4 },
+  'Mechanical Science Block': { code: 'MS', x: 35, y: 75, description: 'Mechanical Engineering Labs & Drawing Halls', floors: 3 },
+  'Learning Centre': { code: 'LC', x: 62, y: 68, description: 'Central Learning Centre & Conference Rooms', floors: 4 },
+  'Research park': { code: 'RP', x: 22, y: 15, description: 'Research Park & Mathematics Wing', floors: 4 },
+  '-': { code: 'AUD', x: 62, y: 88, description: 'Bannari Amman Auditorium', floors: 1 }
+};
+
+const formatBlockName = (block: string) => {
+  if (block === 'Sunflower Block') return 'SF Block';
+  if (block === 'Western Wing - IB Block') return 'IB Block';
+  if (block === 'Eastern Wing - AS Block') return 'AS Block';
+  if (block === 'Mechanical Science Block') return 'ME Block';
+  return block;
+};
+
+const formatFloorName = (floorVal: any) => {
+  const fStr = String(floorVal).toLowerCase();
+  if (fStr.includes('ground') || fStr === '0') return 'Ground Floor';
+  if (fStr.includes('first') || fStr === '1') return '1st Floor';
+  if (fStr.includes('second') || fStr === '2') return '2nd Floor';
+  if (fStr.includes('third') || fStr === '3') return '3rd Floor';
+  if (fStr.includes('fourth') || fStr === '4') return '4th Floor';
+  if (fStr.includes('under ground') || fStr.includes('basement')) return 'Ground Floor';
+  return fStr;
+};
+
+const parseFloorString = (floorVal: any): number => {
+  const f = String(floorVal).toLowerCase();
+  if (f.includes('ground') || f === '0') return 0;
+  if (f.includes('first') || f === '1') return 1;
+  if (f.includes('second') || f === '2') return 2;
+  if (f.includes('third') || f === '3') return 3;
+  if (f.includes('fourth') || f === '4') return 4;
+  if (f.includes('under ground') || f.includes('basement')) return 0;
+  return 0;
+};
 
 export const NavigationScreen: React.FC = () => {
   const { showToast } = useToast();
 
-  const [startBuilding, setStartBuilding] = useState('bld-1'); // Ramanujan
-  const [destBuilding, setDestBuilding] = useState('bld-2'); // CV Raman
-  const [floor, setFloor] = useState<number>(0); // 0: Ground, 1: 1st, etc.
-  const [eta, setEta] = useState(0);
-  const [distance, setDistance] = useState(0);
-  const [instructions, setInstructions] = useState<string[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [selectedVenue, setSelectedVenue] = useState<any | null>(null);
 
-  // Buildings list mapped with paths
-  const buildingsMap = BUILDINGS;
+  // Search input & results states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  // Paths calculations
+  // Load rooms from backend on mount
   useEffect(() => {
-    if (startBuilding === destBuilding) {
-      setEta(0);
-      setDistance(0);
-      setInstructions(['You have arrived at your destination!']);
+    const fetchRooms = async () => {
+      setLoading(true);
+      try {
+        const res = await api.checkRoomAvailability('2030-01-01', '09:00', '10:00');
+        setRooms(res.rooms || []);
+      } catch (err) {
+        console.error("Failed to load live rooms:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRooms();
+  }, []);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (!val.trim()) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
       return;
     }
+    const q = val.toLowerCase();
+    const matches = rooms.filter((r) => {
+      const nameMatch = r.venue_name.toLowerCase().includes(q);
+      const blockMatch = r.block.toLowerCase().includes(q);
+      const typeMatch = r.venue_type.toLowerCase().includes(q);
+      
+      const cseSearch = q.includes('cse') || q.includes('cs') || q.includes('computer');
+      const labSearch = q.includes('lab') || q.includes('leb') || q.includes('science');
+      
+      let isCseLabMatch = false;
+      if (cseSearch && labSearch) {
+        const hasThree = q.includes('3') || q.includes('three');
+        if (hasThree) {
+          isCseLabMatch = r.venue_name === 'SF 103';
+        } else {
+          isCseLabMatch = (r.block.toLowerCase().includes('ib') || r.block.toLowerCase().includes('sunflower')) &&
+                          (r.venue_name.toLowerCase().includes('lab') || r.venue_type.toLowerCase().includes('lab'));
+        }
+      }
 
-    const start = buildingsMap.find((b) => b.id === startBuilding);
-    const dest = buildingsMap.find((b) => b.id === destBuilding);
+      return nameMatch || blockMatch || typeMatch || isCseLabMatch;
+    });
+    setSearchResults(matches.slice(0, 5));
+    setShowSearchDropdown(true);
+  };
 
-    if (!start || !dest) return;
+  const handleSelectSearchResult = (r: any) => {
+    setSelectedVenue(r);
+    setSearchQuery(r.venue_name);
+    setShowSearchDropdown(false);
+    showToast(`Located ${r.venue_name} in ${formatBlockName(r.block)}!`, 'success');
+  };
 
-    // Direct Euclidean distance simulation
-    const dx = dest.coordinates.x - start.coordinates.x;
-    const dy = dest.coordinates.y - start.coordinates.y;
-    const distMeters = Math.round(Math.sqrt(dx * dx + dy * dy) * 4); // Scaled multiplier
-
-    setDistance(distMeters);
-    setEta(Math.ceil(distMeters / 80)); // Walk speed proxy
-
-    // Generating routing instructions dynamically
-    const steps = [
-      `Exit ${start.name} through the ${start.coordinates.y > 50 ? 'North' : 'South'} exit.`,
-      `Head toward the central walkway near ${buildingsMap.find(b => b.code === 'LIB')?.name || 'Library'}.`,
-      `Walk ${distMeters - 20}m along the paved campus courtyard.`,
-      `Enter ${dest.name} Main Lobby.`,
-    ];
-
-    if (floor > 0) {
-      steps.push(`Take the staircase or elevator to Floor ${floor} to find classroom.`);
-    }
-
-    setInstructions(steps);
-  }, [startBuilding, destBuilding, floor]);
+  // Compute unique buildings list dynamically from configuration & rooms
+  const buildingsMap = React.useMemo(() => {
+    return Object.keys(BLOCK_CONFIGS).map((name) => {
+      const config = BLOCK_CONFIGS[name];
+      const totalClassrooms = rooms.filter(r => r.block === name).length;
+      return {
+        id: name,
+        name: name === '-' ? 'Bannari Amman Auditorium' : name,
+        code: config.code,
+        description: config.description,
+        floors: config.floors,
+        totalClassrooms: totalClassrooms || 5,
+        coordinates: { x: config.x, y: config.y }
+      };
+    });
+  }, [rooms]);
 
   const handleRecenter = () => {
     setZoom(1);
@@ -63,27 +136,38 @@ export const NavigationScreen: React.FC = () => {
   };
 
   const handleBuildingClick = (id: string) => {
-    if (startBuilding === id) {
-      showToast('Select a different destination block.', 'warning');
-      return;
+    const roomInBuilding = rooms.find(r => r.block === id);
+    if (roomInBuilding) {
+      setSelectedVenue(roomInBuilding);
+      setSearchQuery(roomInBuilding.venue_name);
+      showToast(`Located ${id} classrooms.`, 'info');
+    } else {
+      const configName = Object.keys(BLOCK_CONFIGS).find(name => name === id);
+      if (configName) {
+        setSelectedVenue({
+          venue_name: id === '-' ? 'Auditorium' : id,
+          block: id,
+          floor: 'Ground',
+          venue_type: id === '-' ? 'Auditorium' : 'Building Block',
+          capacity: '-'
+        });
+        setSearchQuery(id === '-' ? 'BIT Auditorium' : id);
+        showToast(`Located ${id}.`, 'info');
+      } else {
+        showToast(`No information for ${id}.`, 'warning');
+      }
     }
-    setDestBuilding(id);
-    showToast(`Set destination to ${buildingsMap.find(b => b.id === id)?.name}`, 'info');
   };
-
-  // Helper variables for path plotting
-  const startObj = buildingsMap.find((b) => b.id === startBuilding);
-  const destObj = buildingsMap.find((b) => b.id === destBuilding);
 
   return (
     <div className="flex flex-col gap-6 text-left animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Compass className="w-6 h-6 text-primary animate-spin" style={{ animationDuration: '30s' }} /> Campus Navigation
+            <Compass className="w-6 h-6 text-primary animate-spin" style={{ animationDuration: '30s' }} /> Campus Venue Finder
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Plot walkways, locate buildings, and review estimated travel times with high-fidelity routing graphics.
+            Locate lecture halls, laboratories, and seminar centers across the campus grid map.
           </p>
         </div>
       </div>
@@ -92,77 +176,102 @@ export const NavigationScreen: React.FC = () => {
         
         {/* Navigation Sidebar Panel */}
         <div className="flex flex-col gap-4 col-span-1">
-          <Card header={<h3 className="text-sm font-bold text-slate-705 dark:text-slate-350 flex items-center gap-2"><Navigation className="w-4 h-4 text-primary" /> Route Planner</h3>}>
-            <div className="flex flex-col gap-4">
+          <Card header={<h3 className="text-sm font-bold text-slate-700 dark:text-slate-350 flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> Venue Finder</h3>}>
+            <div className="flex flex-col gap-4 relative">
               
-              <Dropdown
-                id="start"
-                label="Start Location"
-                value={startBuilding}
-                onChange={(e) => setStartBuilding(e.target.value)}
-                options={buildingsMap.map((b) => ({ value: b.id, label: b.name }))}
-              />
-
-              <Dropdown
-                id="destination"
-                label="Destination Location"
-                value={destBuilding}
-                onChange={(e) => setDestBuilding(e.target.value)}
-                options={buildingsMap.map((b) => ({ value: b.id, label: b.name }))}
-              />
-
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">Indoor Level</label>
-                <div className="grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-905 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-                  {[0, 1, 2, 3, 4].map((fl) => (
-                    <button
-                      key={fl}
-                      onClick={() => setFloor(fl)}
-                      className={`py-1 text-xs font-bold rounded-lg transition-all
-                        ${floor === fl 
-                          ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-slate-205 dark:border-slate-700' 
-                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-                        }
-                      `}
-                    >
-                      {fl === 0 ? 'GF' : `${fl}F`}
-                    </button>
-                  ))}
+              {/* Classroom / Venue Search Bar */}
+              <div className="relative flex flex-col gap-1 text-left">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Search Venue/Classroom</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={() => { if (searchQuery.trim()) setShowSearchDropdown(true); }}
+                    onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
+                    placeholder="e.g. SF B01, ME101, Smart Class..."
+                    className="w-full text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-slate-800 dark:text-slate-200 cursor-text outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  />
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                 </div>
+
+                {/* Dropdown Results Overlay */}
+                {showSearchDropdown && searchResults.length > 0 && (
+                  <div className="absolute top-[58px] left-0 right-0 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg flex flex-col max-h-48 overflow-y-auto overflow-x-hidden p-1.5 gap-1 animate-fade-in">
+                    {searchResults.map((r, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectSearchResult(r)}
+                        className="w-full text-left p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex flex-col text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                      >
+                        <span className="text-xs font-extrabold">{r.venue_name}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wide">
+                          {formatBlockName(r.block)} — {formatFloorName(r.floor)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showSearchDropdown && searchResults.length === 0 && searchQuery.trim() !== '' && (
+                  <div className="absolute top-[58px] left-0 right-0 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-3 text-center text-xs text-slate-400 italic">
+                    No matching venues found.
+                  </div>
+                )}
               </div>
 
-              {/* Travel Summary */}
-              {distance > 0 && (
-                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl flex items-center justify-between">
-                  <div className="flex flex-col text-left">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Estimated Travel</span>
-                    <span className="text-lg font-extrabold text-primary">{eta} Mins</span>
+              {/* Located Venue Info Card */}
+              {selectedVenue ? (
+                <div className="mt-2 p-4 bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30 rounded-xl flex flex-col gap-3 text-left animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                      Located Venue
+                    </span>
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                      {selectedVenue.venue_type}
+                    </span>
                   </div>
-                  <div className="w-px h-8 bg-blue-100 dark:bg-blue-900/40" />
-                  <div className="flex flex-col text-right">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Distance</span>
-                    <span className="text-lg font-extrabold text-slate-800 dark:text-slate-200">{distance} Meters</span>
+                  
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-black text-slate-900 dark:text-white">
+                      {selectedVenue.venue_name}
+                    </span>
                   </div>
+
+                  <div className="h-px bg-blue-100 dark:bg-blue-900/40" />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Block</span>
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                        {formatBlockName(selectedVenue.block)}
+                      </span>
+                      <span className="text-[9px] font-semibold text-slate-500 mt-0.5 truncate">
+                        {selectedVenue.block}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Floor</span>
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                        {formatFloorName(selectedVenue.floor)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {selectedVenue.capacity && selectedVenue.capacity !== '-' && (
+                    <div className="mt-1 pt-3 border-t border-blue-50 dark:border-blue-950/40 flex justify-between items-center text-[11px]">
+                      <span className="font-semibold text-slate-500">Seating Capacity</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">{selectedVenue.capacity} Students</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl flex flex-col items-center justify-center gap-2">
+                  <MapPin className="w-8 h-8 text-slate-300 dark:text-slate-700 animate-pulse" />
+                  <span className="text-xs font-bold text-slate-400">Search for a venue or click a block on the map to locate</span>
                 </div>
               )}
 
-            </div>
-          </Card>
-
-          {/* Step-by-Step Directions */}
-          <Card className="flex-1" header={<h3 className="text-sm font-bold text-slate-705 dark:text-slate-350">Directions</h3>}>
-            <div className="flex flex-col gap-4 relative pl-5 border-l border-slate-200 dark:border-slate-800">
-              {instructions.map((inst, idx) => (
-                <div key={idx} className="relative text-left flex gap-3.5 items-start">
-                  <div className="absolute -left-[25px] top-1 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-white dark:ring-slate-900" />
-                  <div className="mt-0.5 text-slate-400">
-                    {idx === instructions.length - 1 ? <MapPin className="w-4 h-4 text-rose-500" /> : <MoveUp className="w-4 h-4" />}
-                  </div>
-                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                    {inst}
-                  </span>
-                </div>
-              ))}
             </div>
           </Card>
         </div>
@@ -180,9 +289,9 @@ export const NavigationScreen: React.FC = () => {
 
           {/* Floating map controls */}
           <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2 pointer-events-auto">
-            <button onClick={() => setZoom(prev => Math.min(2, prev + 0.1))} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"><ZoomIn className="w-4.5 h-4.5" /></button>
-            <button onClick={() => setZoom(prev => Math.max(0.6, prev - 0.1))} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"><ZoomOut className="w-4.5 h-4.5" /></button>
-            <button onClick={handleRecenter} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"><RotateCcw className="w-4.5 h-4.5" /></button>
+            <button onClick={() => setZoom(prev => Math.min(2, prev + 0.1))} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-500 hover:text-slate-800 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"><ZoomIn className="w-4.5 h-4.5" /></button>
+            <button onClick={() => setZoom(prev => Math.max(0.6, prev - 0.1))} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-500 hover:text-slate-800 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"><ZoomOut className="w-4.5 h-4.5" /></button>
+            <button onClick={handleRecenter} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-500 hover:text-slate-800 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"><RotateCcw className="w-4.5 h-4.5" /></button>
           </div>
 
           {/* SVG Map Canvas */}
@@ -206,26 +315,9 @@ export const NavigationScreen: React.FC = () => {
               <path d="M 80 140 L 400 140 M 270 50 L 270 320 M 110 140 L 175 300" stroke="#cbd5e1" strokeWidth="12" strokeLinecap="round" className="dark:stroke-slate-800 opacity-60" />
               <path d="M 80 140 L 400 140 M 270 50 L 270 320 M 110 140 L 175 300" stroke="#f8fafc" strokeWidth="6" strokeLinecap="round" className="dark:stroke-slate-900 opacity-80" />
 
-              {/* Animated Dotted Routing Line */}
-              {startObj && destObj && (
-                <path
-                  d={`M ${startObj.coordinates.x * 5} ${startObj.coordinates.y * 4} L 270 140 L ${destObj.coordinates.x * 5} ${destObj.coordinates.y * 4}`}
-                  fill="none"
-                  stroke="#2563EB"
-                  strokeWidth="4.5"
-                  strokeLinecap="round"
-                  strokeDasharray="6, 6"
-                  className="animate-[dash_2s_linear_infinite]"
-                  style={{
-                    strokeDashoffset: 12,
-                  }}
-                />
-              )}
-
               {/* Draw Campus Buildings */}
               {buildingsMap.map((b) => {
-                const isStart = b.id === startBuilding;
-                const isDest = b.id === destBuilding;
+                const isSelected = selectedVenue && b.id === selectedVenue.block;
                 const bx = b.coordinates.x * 5;
                 const by = b.coordinates.y * 4;
 
@@ -235,13 +327,13 @@ export const NavigationScreen: React.FC = () => {
                     className="cursor-pointer group"
                     onClick={() => handleBuildingClick(b.id)}
                   >
-                    {/* Glowing highlight for start/end nodes */}
-                    {(isStart || isDest) && (
+                    {/* Glowing highlight for the selected located node */}
+                    {isSelected && (
                       <circle 
                         cx={bx} 
                         cy={by} 
                         r="38" 
-                        fill={isStart ? '#2563EB' : '#EF4444'} 
+                        fill="#2563EB" 
                         className="opacity-15 animate-ping"
                       />
                     )}
@@ -254,10 +346,8 @@ export const NavigationScreen: React.FC = () => {
                       height="36"
                       rx="8"
                       className={`stroke-2 transition-all duration-300 shadow-sm
-                        ${isStart 
+                        ${isSelected 
                           ? 'fill-blue-500 stroke-blue-600 dark:fill-blue-600 dark:stroke-blue-500' 
-                          : isDest 
-                          ? 'fill-rose-500 stroke-rose-600 dark:fill-rose-600 dark:stroke-rose-500'
                           : 'fill-white dark:fill-slate-900 stroke-slate-300 dark:stroke-slate-800 hover:stroke-primary hover:fill-slate-50'
                         }
                       `}
@@ -269,7 +359,7 @@ export const NavigationScreen: React.FC = () => {
                       y={by + 3}
                       textAnchor="middle"
                       className={`text-[8.5px] font-extrabold select-none transition-colors
-                        ${isStart || isDest ? 'fill-white' : 'fill-slate-700 dark:fill-slate-350'}
+                        ${isSelected ? 'fill-white' : 'fill-slate-700 dark:fill-slate-350'}
                       `}
                     >
                       {b.code}
@@ -291,15 +381,6 @@ export const NavigationScreen: React.FC = () => {
           </div>
         </Card>
       </div>
-      
-      {/* CSS injection for SVG drawing animation */}
-      <style>{`
-        @keyframes dash {
-          to {
-            stroke-dashoffset: -24;
-          }
-        }
-      `}</style>
     </div>
   );
 };

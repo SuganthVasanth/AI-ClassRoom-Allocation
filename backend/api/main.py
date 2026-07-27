@@ -3,6 +3,7 @@ import sqlite3
 import logging
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from utils.db import get_connection, init_db, get_allocation_history_count
@@ -20,6 +21,15 @@ app = FastAPI(
     title="BIT SmartCampus AI Scheduling & Navigation Engine",
     description="Intelligent classroom scheduler combining constraints, ML recommendations, and optimization.",
     version="1.0.0"
+)
+
+# Configure CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Startup event

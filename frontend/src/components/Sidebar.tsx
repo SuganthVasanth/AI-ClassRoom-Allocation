@@ -6,7 +6,7 @@ import {
   Compass, LayoutDashboard, Calendar, FileCheck, HelpCircle,
   Settings, Users, Building, BarChart2, Bell, LogOut,
   Map, MessageSquare, ChevronLeft, ChevronRight, Moon, Sun, ShieldAlert,
-  Sliders, Landmark, School
+  Sliders, Landmark, School, Search
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,9 +22,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   onToggleCollapse,
 }) => {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { showToast } = useToast();
 
   if (!user) return null;
 
@@ -52,6 +51,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     admin: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'approvals', label: 'Approvals', icon: FileCheck },
+      { id: 'availability', label: 'Room Lookup', icon: Search },
+      { id: 'exams', label: 'Exam Scheduling', icon: School },
       { id: 'timetable', label: 'Timetable', icon: Calendar },
       { id: 'navigation', label: 'Campus Map', icon: Map },
       { id: 'maintenance', label: 'Maintenance', icon: Settings },
@@ -61,6 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     staff: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'request', label: 'Request Classroom', icon: FileCheck },
+      { id: 'availability', label: 'Room Lookup', icon: Search },
       { id: 'history', label: 'Booking History', icon: Calendar },
       { id: 'timetable', label: 'Timetable', icon: Calendar },
       { id: 'navigation', label: 'Campus Map', icon: Map },
@@ -69,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ],
     student: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'availability', label: 'Room Lookup', icon: Search },
       { id: 'timetable', label: 'Weekly Timetable', icon: Calendar },
       { id: 'navigation', label: 'Campus Navigation', icon: Map },
       { id: 'ai', label: 'AI Assistant', icon: MessageSquare },
@@ -77,13 +80,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const activeMenu = menuItems[user.role] || [];
-
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextRole = e.target.value as UserRole;
-    switchRole(nextRole);
-    onChangeTab('dashboard');
-    showToast(`Switched workspace sandbox to ${nextRole.replace('_', ' ').toUpperCase()}`, 'info');
-  };
 
   return (
     <aside
@@ -117,25 +113,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Dynamic Sandbox Role Switcher */}
-        {!isCollapsed && (
-          <div className="mx-4 my-4 p-3 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex flex-col gap-2">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
-              <ShieldAlert className="w-3.5 h-3.5 text-primary" />
-              <span>Workspace Role</span>
-            </div>
-            <select
-              value={user.role}
-              onChange={handleRoleChange}
-              className="w-full text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-800 dark:text-slate-200 cursor-pointer outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-            >
-              <option value="super_admin">Super Admin Mode</option>
-              <option value="admin">Admin Mode</option>
-              <option value="staff">Staff Mode</option>
-              <option value="student">Student Mode</option>
-            </select>
-          </div>
-        )}
 
         {/* Navigation Items */}
         <nav className="px-3 flex flex-col gap-1.5 mt-2">

@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';
 import { Sparkles, Send, Bot, User, Trash2, ArrowUpRight, MessageSquare } from 'lucide-react';
+import { api } from '../services/api';
 
 interface AIScreenProps {
   onAutoDraftRequest?: (buildingId: string, strength: number, subject: string) => void;
@@ -16,15 +17,15 @@ export const AIScreen: React.FC<AIScreenProps> = ({ onAutoDraftRequest }) => {
     {
       id: 'm1',
       role: 'assistant',
-      content: "Hello! I'm your BIT SmartCampus AI Assistant. 🤖\nI can analyze live timetable grids, predict vacant blocks, and resolve scheduling clashes. How can I help you today?",
+      content: "Hello! I'm your BIT SmartCampus AI Assistant. 🤖\nI can analyze live timetable grids, predict vacant blocks, and resolve scheduling clashes. How can I help you today?\n\nTry asking me:\n• *Show vacant rooms on 2026-07-20 from 09:00 to 10:00*\n• *Recommend classroom for Class with 50 students on 2026-07-20*",
       timestamp: 'Just now'
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<string[]>([
-    'Find empty lab tomorrow',
-    'RAM-101 schedule check',
+    'Find empty room on 2026-07-20 at 09:00',
+    'Recommend room for 60 students on 2026-07-20',
     'Resolve Monday clash'
   ]);
 
@@ -34,7 +35,78 @@ export const AIScreen: React.FC<AIScreenProps> = ({ onAutoDraftRequest }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleSend = (text: string) => {
+  const parseMessageForAPI = async (text: string): Promise<string | null> => {
+    const textLower = text.toLowerCase();
+    
+    // 1. Detect Room Availability Search
+    if (textLower.includes('vacant') || textLower.includes('available') || textLower.includes('empty') || textLower.includes('free') || textLower.includes('lookup')) {
+      const dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
+      const date = dateMatch ? dateMatch[0] : '2026-07-20';
+      
+      const timeMatches = text.match(/\b\d{1,2}:\d{2}\b/g);
+      const startTime = timeMatches && timeMatches[0] ? timeMatches[0].padStart(5, '0') : '09:00';
+      const endTime = timeMatches && timeMatches[1] ? timeMatches[1].padStart(5, '0') : '10:00';
+      
+      try {
+        const res = await api.checkRoomAvailability(date, startTime, endTime);
+        if (res && res.rooms && res.rooms.length > 0) {
+          const roomList = res.rooms.slice(0, 5).map((r: any) => `• **${r.venue_name}** (${r.block}, Floor ${r.floor}, Cap: ${r.capacity} pax)`).join('\n');
+          return `🔍 **Room Availability Check** on **${date}** (${startTime} - ${endTime}):\n\nI found **${res.available_rooms_count}** vacant rooms. Here are the top suggestions:\n\n${roomList}\n\nWould you like me to book a slot for your lecture?`;
+        } else {
+          return `🔍 **Room Availability Check** on **${date}** (${startTime} - ${endTime}):\n\nUnfortunately, there are no classrooms vacant during this slot. All rooms are currently occupied or undergoing maintenance.`;
+        }
+      } catch (err: any) {
+        return `❌ Error querying room availability: ${err.message || err}`;
+      }
+    }
+    
+    // 2. Detect Recommendation Request
+    if (textLower.includes('recommend') || textLower.includes('suggest') || textLower.includes('allocate') || textLower.includes('book')) {
+      const dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
+      const date = dateMatch ? dateMatch[0] : '2026-07-20';
+      
+      const timeMatches = text.match(/\b\d{1,2}:\d{2}\b/g);
+      const startTime = timeMatches && timeMatches[0] ? timeMatches[0].padStart(5, '0') : '09:00';
+      const endTime = timeMatches && timeMatches[1] ? timeMatches[1].padStart(5, '0') : '10:00';
+      
+      const strengthMatch = text.match(/\b\d{2,3}\b/);
+      const strength = strengthMatch ? parseInt(strengthMatch[0]) : 45;
+      
+      let parsedPurpose = 'Class';
+      if (textLower.includes('lab')) parsedPurpose = 'Lab';
+      else if (textLower.includes('exam')) parsedPurpose = 'Exam';
+      else if (textLower.includes('seminar')) parsedPurpose = 'Seminar';
+      else if (textLower.includes('workshop')) parsedPurpose = 'Workshop';
+      
+      try {
+        const payload = {
+          purpose: parsedPurpose,
+          student_count: strength,
+          date,
+          start_time: startTime,
+          end_time: endTime,
+          department: 'CSE',
+          faculty_id: 'FAC5001',
+          strict_dept: false
+        };
+        
+        const res = await api.recommendRoom(payload);
+        if (res && res.allocated_room) {
+          const optimal = res.allocated_room;
+          const alternatives = (res.top_5_recommendations || []).map((r: any) => r[0]).join(', ');
+          return `🤖 **AI Classroom Recommendation Engine**:\n\nFor your **${parsedPurpose}** request for **${strength} students** on **${date}** (${startTime} - ${endTime}):\n\n• **Allocated Room**: **${optimal.venue_name}** (${optimal.block}, Capacity: ${optimal.capacity} pax)\n• **Walking Distance**: ${res.distance_from_prev} meters\n• **Optimization Score Cost**: ${res.cost.toFixed(4)}\n\n*ML Model Alternative Rankings*: ${alternatives}\n\nWould you like to draft a booking hold for this optimal room?`;
+        } else {
+          return `🤖 **AI Classroom Recommendation Engine**:\n\nNo rooms passed rule validation filters for date ${date} between ${startTime} - ${endTime} for ${strength} students. Please try a different slot.`;
+        }
+      } catch (err: any) {
+        return `❌ Error running room recommendation: ${err.message || err}`;
+      }
+    }
+    
+    return null;
+  };
+
+  const handleSend = async (text: string) => {
     if (!text.trim()) return;
 
     // Add user message
@@ -49,33 +121,51 @@ export const AIScreen: React.FC<AIScreenProps> = ({ onAutoDraftRequest }) => {
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      // Find preset response match
-      const matched = AI_PROMPTS.find(
-        (p) => text.toLowerCase().includes(p.prompt.toLowerCase().substring(0, 15))
-      );
+    try {
+      // 1. Try parsing message for real API queries
+      const apiResponse = await parseMessageForAPI(text);
+      
+      let responseText = apiResponse;
+      let actions = ['Book a Room'];
 
-      const responseText = matched 
-        ? matched.response 
-        : `🤖 I've analyzed the live schedules for your request: "${text}". \n\nI recommend utilizing **ARY-101** or **RAM-201** which are vacant during normal lecture blocks. Would you like me to book a slot?`;
+      if (!responseText) {
+        // 2. Fallback to mock preset prompts
+        const matched = AI_PROMPTS.find(
+          (p) => text.toLowerCase().includes(p.prompt.toLowerCase().substring(0, 15))
+        );
+        responseText = matched 
+          ? matched.response 
+          : `🤖 I've analyzed the live schedules for your request: "${text}". \n\nI recommend utilizing **ARY-101** or **RAM-201** which are vacant during normal lecture blocks. Would you like me to book a slot?`;
+        actions = matched?.actions || ['Book a Room'];
+      } else {
+        actions = ['Draft Request (AI)'];
+      }
 
       const aiMsg = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
         content: responseText,
-        actions: matched?.actions || ['Book a Room'],
+        actions: actions,
         timestamp: 'Just now'
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+    } catch (err: any) {
+      const errorMsg = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: `🤖 Sorry, I encountered an error running that lookup: ${err.message || err}`,
+        timestamp: 'Just now'
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-
+      
       // Append to local history if unique
       if (!chatHistory.includes(text)) {
         setChatHistory(prev => [text, ...prev.slice(0, 4)]);
       }
-    }, 1200);
+    }
   };
 
   const handleActionClick = (action: string) => {

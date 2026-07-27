@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast';
 import { DEPARTMENTS, BUILDINGS, CLASSROOMS } from '../constants/mockData';
 import { MOCK_USERS } from '../contexts/AuthContext';
 import { Landmark, School, Building, Users, Sliders, Check, Plus, Trash2, ShieldAlert } from 'lucide-react';
+import { api } from '../services/api';
 
 interface SuperAdminScreensProps {
   subTab: string;
@@ -25,6 +26,28 @@ export const SuperAdminScreens: React.FC<SuperAdminScreensProps> = ({ subTab }) 
   const [confidenceThreshold, setConfidenceThreshold] = useState(85);
   const [roomLockTime, setRoomLockTime] = useState(15);
   const [autoResolveClashes, setAutoResolveClashes] = useState(true);
+
+  // Real ML model info states
+  const [modelInfo, setModelInfo] = useState<any | null>(null);
+  const [loadingModelInfo, setLoadingModelInfo] = useState(false);
+
+  const fetchModelInfo = async () => {
+    setLoadingModelInfo(true);
+    try {
+      const res = await api.getModelInfo();
+      setModelInfo(res);
+    } catch (err) {
+      console.error("Error fetching model info:", err);
+    } finally {
+      setLoadingModelInfo(false);
+    }
+  };
+
+  useEffect(() => {
+    if (subTab === 'ai_settings') {
+      fetchModelInfo();
+    }
+  }, [subTab]);
 
   const handleSaveInstitution = (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,89 +282,175 @@ export const SuperAdminScreens: React.FC<SuperAdminScreensProps> = ({ subTab }) 
 
   // Render AI Settings Screen
   const renderAISettings = () => (
-    <Card header={
-      <div className="flex items-center gap-2 text-primary font-bold text-left">
-        <Sliders className="w-5 h-5 text-primary" />
-        <h3 className="text-sm font-bold text-slate-705 dark:text-slate-350">AI Allocator Engine Tuning</h3>
-      </div>
-    }>
-      <form onSubmit={handleSaveAISettings} className="flex flex-col gap-6 text-left mt-2">
-        {/* Confidence threshold */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
-            Minimum Match Confidence Threshold ({confidenceThreshold}%)
-          </label>
-          <div className="flex items-center gap-4 mt-2">
-            <input
-              type="range"
-              min="50"
-              max="98"
-              step="2"
-              value={confidenceThreshold}
-              onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-            <span className="w-12 text-center text-xs font-bold bg-slate-100 dark:bg-slate-805 border border-slate-200 dark:border-slate-800 py-1 px-2 rounded-lg">
-              {confidenceThreshold}%
-            </span>
-          </div>
-          <p className="text-[10px] text-slate-450 dark:text-slate-500 leading-normal mt-1">
-            Min confidence required to trigger automatic booking proposal in recommendations. Higher means safer allocations but fewer drafts.
-          </p>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start text-left">
+      
+      {/* Parameters tuning */}
+      <Card className="lg:col-span-2 shadow-sm bg-white dark:bg-slate-900" header={
+        <div className="flex items-center gap-2 text-primary font-bold text-left">
+          <Sliders className="w-5 h-5 text-primary" />
+          <h3 className="text-sm font-bold text-slate-705 dark:text-slate-350">AI Allocator Engine Tuning</h3>
         </div>
-
-        <div className="w-full h-px bg-slate-100 dark:bg-slate-800" />
-
-        {/* Expiration locks timer */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
-            Draft Booking Holds Lifetime ({roomLockTime} Minutes)
-          </label>
-          <div className="flex items-center gap-4 mt-2">
-            <input
-              type="range"
-              min="5"
-              max="60"
-              step="5"
-              value={roomLockTime}
-              onChange={(e) => setRoomLockTime(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-            <span className="w-12 text-center text-xs font-bold bg-slate-100 dark:bg-slate-805 border border-slate-200 dark:border-slate-800 py-1 px-2 rounded-lg">
-              {roomLockTime}m
-            </span>
-          </div>
-          <p className="text-[10px] text-slate-455 dark:text-slate-500 leading-normal mt-1">
-            Duration in minutes that suggested rooms are reserved as "Pending lock" before reverting to available status if request is not submitted.
-          </p>
-        </div>
-
-        <div className="w-full h-px bg-slate-100 dark:bg-slate-800" />
-
-        {/* Toggle conflict auto resolution */}
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h4 className="text-xs font-bold text-slate-705 dark:text-slate-200">AI Automated Conflict Resolution</h4>
-            <p className="text-[10px] text-slate-450 dark:text-slate-500 leading-normal mt-1 max-w-md">
-              Allow the system to automatically move conflicting timetable classes to adjacent vacant classrooms of equal capacity and alert HODs/Students.
+      }>
+        <form onSubmit={handleSaveAISettings} className="flex flex-col gap-6 text-left mt-2">
+          {/* Confidence threshold */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-650 dark:text-slate-400">
+              Minimum Match Confidence Threshold ({confidenceThreshold}%)
+            </label>
+            <div className="flex items-center gap-4 mt-2">
+              <input
+                type="range"
+                min="50"
+                max="98"
+                step="2"
+                value={confidenceThreshold}
+                onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+              <span className="w-12 text-center text-xs font-bold bg-slate-100 dark:bg-slate-805 border border-slate-200 dark:border-slate-800 py-1 px-2 rounded-lg">
+                {confidenceThreshold}%
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-450 dark:text-slate-500 leading-normal mt-1">
+              Min confidence required to trigger automatic booking proposal in recommendations. Higher means safer allocations but fewer drafts.
             </p>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={autoResolveClashes}
-              onChange={(e) => setAutoResolveClashes(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
-          </label>
-        </div>
 
-        <Button type="submit" variant="primary" size="sm" className="self-end mt-2" icon={<Check className="w-4 h-4" />}>
-          Save AI Engine Parameters
-        </Button>
-      </form>
-    </Card>
+          <div className="w-full h-px bg-slate-100 dark:bg-slate-800" />
+
+          {/* Expiration locks timer */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-650 dark:text-slate-400">
+              Draft Booking Holds Lifetime ({roomLockTime} Minutes)
+            </label>
+            <div className="flex items-center gap-4 mt-2">
+              <input
+                type="range"
+                min="5"
+                max="60"
+                step="5"
+                value={roomLockTime}
+                onChange={(e) => setRoomLockTime(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+              <span className="w-12 text-center text-xs font-bold bg-slate-100 dark:bg-slate-805 border border-slate-200 dark:border-slate-800 py-1 px-2 rounded-lg">
+                {roomLockTime}m
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500 leading-normal mt-1">
+              Duration in minutes that suggested rooms are reserved as "Pending lock" before reverting to available status if request is not submitted.
+            </p>
+          </div>
+
+          <div className="w-full h-px bg-slate-100 dark:bg-slate-800" />
+
+          {/* Toggle conflict auto resolution */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h4 className="text-xs font-bold text-slate-705 dark:text-slate-205">AI Automated Conflict Resolution</h4>
+              <p className="text-[10px] text-slate-450 dark:text-slate-500 leading-normal mt-1 max-w-md">
+                Allow the system to automatically move conflicting timetable classes to adjacent vacant classrooms of equal capacity and alert HODs/Students.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autoResolveClashes}
+                onChange={(e) => setAutoResolveClashes(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+            </label>
+          </div>
+
+          <Button type="submit" variant="primary" size="sm" className="self-end mt-2" icon={<Check className="w-4 h-4" />}>
+            Save AI Engine Parameters
+          </Button>
+        </form>
+      </Card>
+
+      {/* Model monitor card */}
+      <Card className="shadow-sm border-primary/20 bg-gradient-to-br from-blue-50/10 to-white dark:from-slate-850 dark:to-slate-900" header={
+        <div className="flex items-center gap-2 text-primary font-bold text-left">
+          <Sliders className="w-5 h-5 text-primary animate-pulse" />
+          <h3 className="text-sm font-bold text-slate-750 dark:text-slate-200">XGBoost ML Recommender Monitor</h3>
+        </div>
+      }>
+        <div className="flex flex-col gap-4 text-left text-xs leading-normal">
+          {loadingModelInfo ? (
+            <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] font-bold">Checking active models...</span>
+            </div>
+          ) : !modelInfo ? (
+            <div className="text-center py-6 text-slate-400 font-semibold border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+              No active recommender model found. Using default heuristic ranking.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-500">Status:</span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/10">
+                  ● {modelInfo.status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-500">Version:</span>
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-100 select-all truncate max-w-[150px]">{modelInfo.model_version || 'N/A'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-500">Trained At:</span>
+                <span className="font-semibold text-slate-650 dark:text-slate-350">{modelInfo.trained_at || 'N/A'}</span>
+              </div>
+              
+              <div className="w-full h-px bg-slate-100 dark:bg-slate-800" />
+              
+              <div className="flex flex-col gap-2">
+                <span className="font-extrabold text-[10px] text-slate-400 uppercase tracking-widest">Active Model Test Metrics</span>
+                <div className="grid grid-cols-3 gap-2 text-center mt-1">
+                  <div className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Accuracy</span>
+                    <span className="text-xs font-black text-primary">
+                      {modelInfo.metrics?.accuracy ? `${(modelInfo.metrics.accuracy * 100).toFixed(1)}%` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">F1-Score</span>
+                    <span className="text-xs font-black text-purple-600 dark:text-purple-400">
+                      {modelInfo.metrics?.f1_score ? `${(modelInfo.metrics.f1_score * 100).toFixed(1)}%` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Top-5 Acc</span>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                      {modelInfo.metrics?.top5_accuracy ? `${(modelInfo.metrics.top5_accuracy * 100).toFixed(1)}%` : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full h-px bg-slate-100 dark:bg-slate-800" />
+
+              {/* Retraining Threshold Counter */}
+              <div className="flex flex-col gap-1.5 mt-1">
+                <div className="flex justify-between items-center text-[10px] font-bold">
+                  <span className="text-slate-500">Auto Retraining Counter</span>
+                  <span className="text-primary">{modelInfo.training_records_count || 1500} / 1000</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-750">
+                  <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '100%' }} />
+                </div>
+                <p className="text-[9px] text-slate-450 leading-normal mt-1">
+                  The model will automatically retrain and version itself in the background when the buffer reaches 1000 new allocation records.
+                </p>
+              </div>
+
+            </div>
+          )}
+        </div>
+      </Card>
+
+    </div>
   );
 
   return (

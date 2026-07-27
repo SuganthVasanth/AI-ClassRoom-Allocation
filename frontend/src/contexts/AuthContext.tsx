@@ -45,34 +45,59 @@ export const MOCK_USERS: Record<UserRole, User> = {
   }
 };
 
+export const getRoleFromEmail = (email: string): UserRole => {
+  const cleanEmail = email.trim().toLowerCase();
+
+  const superAdminEmails = (import.meta.env.VITE_SUPER_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e: string) => e.trim().toLowerCase());
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e: string) => e.trim().toLowerCase());
+  const facultyEmails = (import.meta.env.VITE_FACULTY_EMAILS || import.meta.env.VITE_TEACHER_EMAILS || '')
+    .split(',')
+    .map((e: string) => e.trim().toLowerCase());
+
+  if (superAdminEmails.includes(cleanEmail)) {
+    return 'super_admin';
+  }
+  if (adminEmails.includes(cleanEmail)) {
+    return 'admin';
+  }
+  if (facultyEmails.includes(cleanEmail)) {
+    return 'staff'; // 'staff' maps to faculty in UI
+  }
+
+  // Any unspecified email address defaults to 'student'
+  return 'student';
+};
+
 interface AuthContextType {
   user: User | null;
-  login: (role: UserRole) => void;
+  loginWithUser: (user: User) => void;
   logout: () => void;
-  switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('bit_campus_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
-  const login = (role: UserRole) => {
-    setUser(MOCK_USERS[role]);
+  const loginWithUser = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem('bit_campus_user', JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
-  };
-
-  const switchRole = (role: UserRole) => {
-    if (user) {
-      setUser(MOCK_USERS[role]);
-    }
+    localStorage.removeItem('bit_campus_user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, loginWithUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

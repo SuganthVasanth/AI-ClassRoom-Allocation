@@ -6,8 +6,9 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Dropdown } from '../components/Dropdown';
-import { Sparkles, Calendar, Clock, Users, Building, ShieldCheck, HeartHandshake } from 'lucide-react';
+import { Sparkles, Calendar, Clock, Users, Building, ShieldCheck, HeartHandshake, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { api } from '../services/api';
 
 interface RequestScreenProps {
   onAddRequest: (request: any) => void;
@@ -19,17 +20,36 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
 
   const [subject, setSubject] = useState('');
   const [date, setDate] = useState('2026-07-20');
-  const [time, setTime] = useState('10:00');
-  const [duration, setDuration] = useState('2');
+  const [time, setTime] = useState('09:00');
+  const [duration, setDuration] = useState('1');
   const [strength, setStrength] = useState(40);
   const [preferredBuilding, setPreferredBuilding] = useState('bld-1'); // Default Ramanujan
   const [remarks, setRemarks] = useState('');
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+  
+  // Real API states
+  const [purpose, setPurpose] = useState('Class');
+  const [strictDept, setStrictDept] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [allocationId, setAllocationId] = useState<string | null>(null);
 
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
 
   const facilityOptions = ['Projector', 'Wi-Fi', 'AC', 'Audio System', 'Smart Board', 'Computers'];
+
+  const purposeOptions = [
+    { value: 'Class', label: 'Class / Lecture' },
+    { value: 'Lab', label: 'Lab / Practical' },
+    { value: 'Exam', label: 'Examination' },
+    { value: 'Seminar', label: 'Seminar' },
+    { value: 'Workshop', label: 'Workshop' },
+    { value: 'Placement', label: 'Placement Drive' },
+    { value: 'Meeting', label: 'Meeting' },
+    { value: 'Conference', label: 'Conference' },
+    { value: 'Training', label: 'Faculty Training' }
+  ];
 
   // Handle facilities toggles
   const handleFacilityToggle = (facility: string) => {
@@ -38,42 +58,113 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
     );
   };
 
-  // Re-run mock AI suggestions whenever parameters change
-  useEffect(() => {
-    // Find rooms in selected building that have sufficient capacity
-    const bld = BUILDINGS.find((b) => b.id === preferredBuilding);
-    if (!bld) return;
+  // Helper time calculation
+  const calculateEndTime = (timeStr: string, durationHrs: string) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return '';
+    const totalMinutes = hours * 60 + minutes + Math.round(parseFloat(durationHrs) * 60);
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+  };
 
-    const matches = CLASSROOMS.filter(
-      (room) =>
-        room.buildingId === preferredBuilding &&
-        room.capacity >= strength &&
-        room.status === 'available'
-    )
-      .map((room) => {
-        // Calculate a mock matching confidence based on facilities
-        const roomFacilities = room.equipment;
-        const matchingFac = selectedFacilities.filter((f) => roomFacilities.includes(f));
-        let confidence = 85;
-        if (matchingFac.length === selectedFacilities.length && selectedFacilities.length > 0) {
-          confidence = 98;
-        } else if (selectedFacilities.length > 0) {
-          confidence = 70 + Math.round((matchingFac.length / selectedFacilities.length) * 25);
-        }
+  // Helper department mapper
+  const getDeptCode = (fullName: string | undefined): string => {
+    if (!fullName) return 'CSE';
+    const nameUpper = fullName.toUpperCase();
+    if (nameUpper.includes('COMPUTER SCIENCE') || nameUpper.includes('CSE')) return 'CSE';
+    if (nameUpper.includes('INFORMATION TECHNOLOGY') || nameUpper.includes('IT')) return 'IT';
+    if (nameUpper.includes('ELECTRONICS') || nameUpper.includes('ECE')) return 'ECE';
+    if (nameUpper.includes('ELECTRICAL') || nameUpper.includes('EEE')) return 'EEE';
+    if (nameUpper.includes('MECHANICAL') || nameUpper.includes('MECH')) return 'MECH';
+    if (nameUpper.includes('ARTIFICIAL') || nameUpper.includes('AIDS') || nameUpper.includes('AIML')) return 'AIDS';
+    return 'CSE'; // Default
+  };
 
-        return {
-          id: room.id,
-          name: room.name,
-          capacity: room.capacity,
-          equipment: room.equipment,
-          confidence,
+  // Fetch live recommendations from backend
+  const fetchRecommendations = async () => {
+    if (!date || !time || !duration || !strength) return;
+
+    setLoading(true);
+    setApiError(null);
+    try {
+      const endTimeStr = calculateEndTime(time, duration);
+      const deptCode = getDeptCode(user?.department);
+      
+      const payload = {
+        purpose,
+        student_count: strength,
+        date,
+        start_time: time,
+        end_time: endTimeStr,
+        department: deptCode,
+        faculty_id: user?.id || 'FAC5001',
+        strict_dept: strictDept
+      };
+
+      const result = await api.recommendRoom(payload);
+      
+      if (result && result.allocated_room) {
+        setAllocationId(result.allocation_id);
+        
+        // Structure optimal room selection
+        const optimalRoom = result.allocated_room;
+        const optimalName = optimalRoom.venue_name;
+        
+        // Find existing classroom in frontend mock data to copy images/details
+        const existingOptimal = CLASSROOMS.find(c => c.name.startsWith(optimalName) || c.name === optimalName);
+        
+        const optimalSuggestion = {
+          id: existingOptimal?.id || `room-${optimalName}`,
+          name: existingOptimal?.name || `${optimalName} (${optimalRoom.venue_type || 'Classroom'})`,
+          capacity: optimalRoom.capacity || strength,
+          equipment: existingOptimal?.equipment || (purpose.toLowerCase() === 'lab' ? ['Computers', 'Wi-Fi'] : ['Projector', 'Wi-Fi']),
+          confidence: 100, // Optimal solution
+          isOptimal: true,
+          block: optimalRoom.block
         };
-      })
-      .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 2);
 
-    setAiSuggestions(matches);
-  }, [preferredBuilding, strength, selectedFacilities]);
+        // Format and map other ML recommendations
+        const mappedAlternatives = (result.top_5_recommendations || [])
+          .filter(([rName]: [string, number]) => rName !== optimalName) // don't repeat optimal
+          .map(([rName, score]: [string, number]) => {
+            const existing = CLASSROOMS.find(c => c.name.startsWith(rName) || c.name === rName);
+            return {
+              id: existing?.id || `room-${rName}`,
+              name: existing?.name || `${rName} (Alternative Candidate)`,
+              capacity: existing?.capacity || strength,
+              equipment: existing?.equipment || [],
+              confidence: Math.round(score * 100),
+              isOptimal: false,
+              block: existing?.buildingName || 'Campus Main Block'
+            };
+          });
+
+        const suggestionsList = [optimalSuggestion, ...mappedAlternatives];
+        setAiSuggestions(suggestionsList);
+        setSelectedSuggestionId(optimalSuggestion.id); // Default to optimal
+      } else {
+        setAiSuggestions([]);
+        setSelectedSuggestionId(null);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch room recommendation:", err);
+      setApiError(err.message || "Failed to fetch room recommendations.");
+      setAiSuggestions([]);
+      setSelectedSuggestionId(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Re-run recommendation whenever inputs change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchRecommendations();
+    }, 450); // slight debounce
+    return () => clearTimeout(timer);
+  }, [purpose, date, time, duration, strength, strictDept, preferredBuilding]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +175,11 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
     }
 
     const matchedRoom = aiSuggestions.find((s) => s.id === selectedSuggestionId) || aiSuggestions[0];
+
+    if (!matchedRoom) {
+      showToast('No classroom allocated. Please verify your options.', 'error');
+      return;
+    }
 
     const newRequest = {
       id: `req-${Math.random().toString(36).substr(2, 9)}`,
@@ -99,12 +195,11 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
       remarks,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      ...(matchedRoom && {
-        allocatedClassroomId: matchedRoom.id,
-        allocatedClassroomName: matchedRoom.name,
-        aiSuggested: true,
-        aiConfidence: matchedRoom.confidence,
-      }),
+      allocatedClassroomId: matchedRoom.id,
+      allocatedClassroomName: matchedRoom.name.split(' (')[0],
+      aiSuggested: true,
+      aiConfidence: matchedRoom.confidence,
+      allocationId: allocationId
     };
 
     onAddRequest(newRequest);
@@ -141,15 +236,26 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
         <Card className="lg:col-span-2 shadow-sm bg-white dark:bg-slate-900">
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             
-            {/* Subject */}
-            <Input
-              id="subject"
-              label="Subject / Purpose"
-              placeholder="e.g. Guest Lecture on Cryptography"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              required
-            />
+            {/* Subject and Purpose row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <Input
+                  id="subject"
+                  label="Subject / Lecture Title"
+                  placeholder="e.g. Guest Lecture on Cryptography"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
+                />
+              </div>
+              <Dropdown
+                id="purpose"
+                label="Booking Purpose"
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                options={purposeOptions}
+              />
+            </div>
 
             {/* Date and Time Group */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -194,7 +300,7 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
                 <div className="flex items-center gap-4 mt-2">
                   <input
                     type="range"
-                    min="10"
+                    min="5"
                     max="150"
                     step="5"
                     value={strength}
@@ -216,7 +322,24 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
               />
             </div>
 
-            {/* Facilities Checklist */}
+            {/* Strict department option */}
+            <div className="flex items-center justify-between gap-4 p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/50 dark:border-slate-800">
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Strict Department Preference</h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">Restrict rooms strictly to department preferred spaces</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={strictDept}
+                  onChange={(e) => setStrictDept(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+              </label>
+            </div>
+
+            {/* Required Facilities Checklist */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">
                 Required Facilities
@@ -250,14 +373,14 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
               </label>
               <textarea
                 id="remarks"
-                placeholder="e.g. Board of Studies experts attending. Needs audio microphone testing."
+                placeholder="e.g. Expert lecture series. Needs audio microphone testing."
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl transition-all duration-200 outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary min-h-[90px]"
               />
             </div>
 
-            <Button type="submit" variant="primary" className="py-3 text-sm mt-2">
+            <Button type="submit" variant="primary" className="py-3 text-sm mt-2" disabled={loading}>
               Submit Allocation Request
             </Button>
           </form>
@@ -273,11 +396,22 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
           }>
             <div className="flex flex-col gap-4 text-sm leading-relaxed">
               <p className="text-xs text-slate-500">
-                Live matching algorithms suggest available rooms matching criteria, minimizing timetable clashes automatically.
+                Optimization Engine + ML rankings validate rules, building distances, and capacity wastage to find matching rooms.
               </p>
 
-              {aiSuggestions.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 font-semibold border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-bold text-slate-500">Querying AI Engine...</span>
+                </div>
+              ) : apiError ? (
+                <div className="flex flex-col items-center justify-center p-4 py-6 text-rose-500 text-center gap-2 border border-dashed border-rose-250 dark:border-rose-900/40 rounded-xl bg-rose-500/5">
+                  <AlertCircle className="w-7 h-7 text-rose-500" />
+                  <span className="text-xs font-bold">No Rooms Allocated</span>
+                  <p className="text-[10px] text-slate-500 leading-normal">{apiError}</p>
+                </div>
+              ) : aiSuggestions.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 font-semibold border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                   ⚠️ No vacant rooms matching requirements.
                 </div>
               ) : (
@@ -288,28 +422,35 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
                       <div
                         key={s.id}
                         onClick={() => setSelectedSuggestionId(s.id)}
-                        className={`p-3.5 border rounded-xl cursor-pointer text-left transition-all
+                        className={`p-3.5 border rounded-xl cursor-pointer text-left transition-all relative overflow-hidden
                           ${isSelected
                             ? 'border-emerald-500 dark:border-emerald-600 bg-emerald-500/5 ring-1 ring-emerald-500'
                             : 'border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-800'
                           }
                         `}
                       >
-                        <div className="flex justify-between items-start gap-2">
-                          <span className="font-extrabold text-slate-805 dark:text-slate-200 text-sm">
+                        {s.isOptimal && (
+                          <div className="absolute top-0 right-0 bg-emerald-500 text-white font-extrabold text-[8px] px-2 py-0.5 rounded-bl uppercase tracking-wider">
+                            Optimal (AI)
+                          </div>
+                        )}
+                        <div className="flex justify-between items-start gap-2 pr-12">
+                          <span className="font-extrabold text-slate-805 dark:text-slate-200 text-sm truncate">
                             {s.name}
                           </span>
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/10">
-                            {s.confidence}% Match
-                          </span>
                         </div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+                          {s.block}
+                        </p>
                         
-                        <div className="flex items-center gap-3.5 text-xs text-slate-450 dark:text-slate-400 mt-2">
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5" /> Cap: {s.capacity}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] font-semibold truncate max-w-[120px]">
-                            {s.equipment.slice(0, 3).join(', ')}
+                        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                            <span className="flex items-center gap-1 font-semibold">
+                              <Users className="w-3.5 h-3.5" /> Cap: {s.capacity}
+                            </span>
+                          </div>
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/10">
+                            {s.confidence}% Match
                           </span>
                         </div>
                       </div>
@@ -318,9 +459,9 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
                 </div>
               )}
               
-              <div className="mt-2 text-xs flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-950/30 rounded-lg text-slate-500">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>Pre-allocation locks classroom for 15 mins.</span>
+              <div className="mt-1 text-[10px] flex items-center gap-1.5 p-2 bg-slate-50 dark:bg-slate-950/30 rounded-lg text-slate-500 leading-normal">
+                <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <span>AI pre-locks this selection to prevent overlaps.</span>
               </div>
             </div>
           </Card>

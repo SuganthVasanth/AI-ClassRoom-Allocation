@@ -1,76 +1,86 @@
-import React, { useState } from 'react';
-import { useAuth, type UserRole } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useAuth, getRoleFromEmail, type UserRole } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../components/Toast';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { Compass, KeyRound, Mail, Moon, Sun } from 'lucide-react';
+import { Compass, Moon, Sun } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
-  const { login } = useAuth();
+  const { loginWithUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      showToast('Please fill in all fields', 'warning');
-      return;
-    }
-
-    setLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-      setLoading(false);
-      
-      // Determine role from mock email
-      if (email.includes('superadmin')) {
-        login('super_admin');
-        showToast('Logged in as Super Admin!', 'success');
-      } else if (email.includes('admin')) {
-        login('admin');
-        showToast('Logged in as Admin!', 'success');
-      } else if (email.includes('staff')) {
-        login('staff');
-        showToast('Logged in as Staff!', 'success');
-      } else if (email.includes('student') || email.includes('dharun')) {
-        login('student');
-        showToast('Logged in as Student!', 'success');
-      } else {
-        // Fallback default
-        login('student');
-        showToast('Logged in successfully!', 'success');
+  // Initialize Google Identity Services
+  useEffect(() => {
+    const initGoogleSignIn = () => {
+      if (typeof window !== 'undefined' && (window as any).google) {
+        const google = (window as any).google;
+        google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'mock-id',
+          callback: handleGoogleLoginSuccess
+        });
+        google.accounts.id.renderButton(
+          document.getElementById('googleSignInBtn'),
+          { theme: 'outline', size: 'large', width: '380', logo_alignment: 'left' }
+        );
       }
-    }, 800);
-  };
-
-  const autoFillAndLogin = (role: UserRole) => {
-    const emails: Record<UserRole, string> = {
-      super_admin: 'superadmin@bit.edu',
-      admin: 'admin.allocations@bit.edu',
-      staff: 'amit.sharma@bit.edu',
-      student: 'dharun.cs24@bit.edu'
     };
 
-    setEmail(emails[role]);
-    setPassword('password123');
-    setLoading(true);
-    
-    setTimeout(() => {
-      setLoading(false);
-      login(role);
-      showToast(`Logged in as ${role.replace('_', ' ').toUpperCase()}!`, 'success');
-    }, 450);
+    initGoogleSignIn();
+    const interval = setInterval(() => {
+      if ((window as any).google) {
+        initGoogleSignIn();
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleGoogleLoginSuccess = (response: any) => {
+    try {
+      const credential = response.credential;
+      // Decode JWT payload
+      const base64Url = credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        window.atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+      
+      const userEmail = payload.email;
+      const userName = payload.name;
+      const userPicture = payload.picture;
+      
+      // Detect role from email via environment mapping!
+      const role = getRoleFromEmail(userEmail);
+      
+      // Log user in
+      loginWithUser({
+        id: `goog-${payload.sub || Date.now()}`,
+        name: userName,
+        email: userEmail,
+        role: role,
+        department: role === 'staff' ? 'Computer Science & Engineering' : (role === 'admin' ? 'Campus Administration' : (role === 'super_admin' ? 'Campus Operations' : 'Information Technology')),
+        avatarUrl: userPicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face'
+      });
+      
+      showToast(`Logged in with Google as ${role.replace('_', ' ').toUpperCase()}!`, 'success');
+    } catch (err: any) {
+      console.error("Google login parsing failed:", err);
+      showToast("Google login authentication failed.", "error");
+    }
   };
 
+
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300 relative overflow-hidden text-left">
       {/* Background gradients */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full filter blur-3xl" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full filter blur-3xl" />
@@ -78,7 +88,7 @@ export const LoginScreen: React.FC = () => {
       {/* Floating Theme Button */}
       <button
         onClick={toggleTheme}
-        className="absolute top-6 right-6 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
+        className="absolute top-6 right-6 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
       >
         {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
       </button>
@@ -98,96 +108,16 @@ export const LoginScreen: React.FC = () => {
           </p>
         </div>
 
-        <Card padding="lg" className="w-full shadow-md bg-white dark:bg-slate-900">
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        <Card padding="lg" className="w-full shadow-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col gap-3.5">
+            {/* Native Google Sign In Button Container */}
+            <div id="googleSignInBtn" className="w-full flex justify-center min-h-[40px]" />
             
-            <Input
-              id="email"
-              label="Email Address"
-              type="email"
-              placeholder="e.g. amit.sharma@bit.edu"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              leftIcon={<Mail className="w-4 h-4" />}
-              required
-            />
+            {/* Sandbox mock google log in */}
             
-            <Input
-              id="password"
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              leftIcon={<KeyRound className="w-4 h-4" />}
-              required
-            />
-
-            <div className="flex items-center justify-between mt-1 text-xs">
-              <label className="flex items-center gap-2 font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded text-primary focus:ring-primary border-slate-300 dark:border-slate-700 bg-transparent"
-                />
-                Remember me
-              </label>
-              <a 
-                href="#forgot" 
-                onClick={(e) => { e.preventDefault(); showToast('Reset email sent (Simulated)', 'info'); }}
-                className="font-semibold text-primary hover:text-primary-hover hover:underline"
-              >
-                Forgot password?
-              </a>
-            </div>
-
-            <Button
-              type="submit"
-              loading={loading}
-              className="w-full py-3 text-sm mt-3"
-            >
-              Sign In
-            </Button>
-          </form>
-        </Card>
-
-        {/* Quick Review Access */}
-        <Card padding="md" className="border-dashed border-2 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
-          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center mb-3">
-            Quick Sandbox Access (Roles)
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => autoFillAndLogin('super_admin')}
-              className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-750 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-800 transition-all text-left shadow-sm flex flex-col"
-            >
-              <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Super Admin</span>
-              <span className="truncate">Dr. Rajesh Kumar</span>
-            </button>
-            <button
-              onClick={() => autoFillAndLogin('admin')}
-              className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-750 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-800 transition-all text-left shadow-sm flex flex-col"
-            >
-              <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Admin</span>
-              <span className="truncate">Sarah Jenkins</span>
-            </button>
-            <button
-              onClick={() => autoFillAndLogin('staff')}
-              className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-750 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-800 transition-all text-left shadow-sm flex flex-col"
-            >
-              <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Staff</span>
-              <span className="truncate">Prof. Amit Sharma</span>
-            </button>
-            <button
-              onClick={() => autoFillAndLogin('student')}
-              className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-750 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-800 transition-all text-left shadow-sm flex flex-col"
-            >
-              <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">Student</span>
-              <span className="truncate">Dharun S.</span>
-            </button>
           </div>
         </Card>
+
 
       </div>
     </div>
