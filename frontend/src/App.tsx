@@ -4,7 +4,6 @@ import { AuthProvider, useAuth, type UserRole } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './components/Toast';
 
 // Screens imports
-import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './screens/Dashboard';
@@ -30,7 +29,6 @@ function MainApp() {
   const { theme } = useTheme();
   const { showToast } = useToast();
 
-  const [showSplash, setShowSplash] = useState(true);
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -55,10 +53,6 @@ function MainApp() {
   const [requests, setRequests] = useState<BookingRequest[]>(INITIAL_REQUESTS);
   const [notifications, setNotifications] = useState<SystemNotification[]>(MOCK_NOTIFICATIONS);
   const [rooms, setRooms] = useState(CLASSROOMS);
-
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
 
   if (!user) {
     return <LoginScreen />;

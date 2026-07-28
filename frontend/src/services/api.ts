@@ -92,4 +92,46 @@ export const api = {
     request<any>('/model-info', {
       method: 'GET',
     }),
+
+  uploadStudentExcel: async (
+    file: File,
+    mode: string,
+    startDate: string,
+    startSession: string,
+    endDate?: string,
+    endSession?: string
+  ): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+    formData.append('start_date', startDate);
+    formData.append('start_session', startSession);
+    if (endDate) {
+      formData.append('end_date', endDate);
+    }
+    if (endSession) {
+      formData.append('end_session', endSession);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/upload-venue-mapping`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      let msg = `HTTP error! status: ${response.status}`;
+      try {
+        const err = JSON.parse(text);
+        msg = err.detail || msg;
+      } catch {}
+      throw new Error(msg);
+    }
+    return response.json();
+  },
+
+  downloadAllotmentUrl: (sessionId: string) => {
+    return `${API_BASE_URL}/download-allotment/${sessionId}`;
+  },
 };
+

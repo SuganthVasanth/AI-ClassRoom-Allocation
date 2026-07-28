@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth, getRoleFromEmail, type UserRole } from '../contexts/AuthContext';
+import { useAuth, getRoleFromEmail, type UserRole, MOCK_USERS } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../components/Toast';
 import { Card } from '../components/Card';
@@ -103,7 +103,7 @@ export const LoginScreen: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
             BIT SmartCampus
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-550 dark:text-slate-400">
             Sign in to access classroom navigation and AI scheduler.
           </p>
         </div>
@@ -114,6 +114,22 @@ export const LoginScreen: React.FC = () => {
             <div id="googleSignInBtn" className="w-full flex justify-center min-h-[40px]" />
             
             {/* Sandbox mock google log in */}
+            <div className="border-t border-slate-200 dark:border-slate-800 my-2" />
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">Development Sandbox Bypass</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => loginWithUser(MOCK_USERS.staff)}
+                className="py-1.5 px-3 bg-blue-550 hover:bg-blue-600 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Login as Staff
+              </button>
+              <button
+                onClick={() => loginWithUser(MOCK_USERS.admin)}
+                className="py-1.5 px-3 bg-amber-550 hover:bg-amber-600 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Login as Admin
+              </button>
+            </div>
             
           </div>
         </Card>
