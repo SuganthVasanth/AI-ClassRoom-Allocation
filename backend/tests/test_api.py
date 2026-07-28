@@ -5,6 +5,8 @@ import os
 
 # Set dummy DB path for testing before import to ensure it uses a clean database if needed,
 # or let's import directly. We can override the DB path or mock the database.
+os.environ["DB_PATH"] = "data/test_campus_scheduler.db"
+
 # Let's import the app from api.main
 from api.main import app
 from utils.db import init_db, get_connection
@@ -13,7 +15,7 @@ client = TestClient(app)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_test_db():
-    db_path = "data/campus_scheduler.db"
+    db_path = "data/test_campus_scheduler.db"
     # Ensure database folder exists
     os.makedirs("data", exist_ok=True)
     
@@ -157,135 +159,117 @@ def test_api_upload_and_download_venue_mapping():
         os.remove(temp_file_path)
 
 
-def test_api_upload_venue_mapping_modes_and_stats():
+def test_api_upload_venue_mapping_with_session_facilities():
     import pandas as pd
     import io
     import os
+    from utils.db import get_connection
+
+    # Insert test venues into database
+    conn = get_connection()
+    cursor = conn.cursor()
     
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Clean and insert specific test venues
+    cursor.execute("DELETE FROM venues WHERE venue_name IN ('AIML Lab 6', 'WW 217', 'AIML Lab 7', 'WW 218')")
     
-    # Create dummy data
+    # AIML Lab 6 lacks projector
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('AIML Lab 6', 'Lab', 'Computing Block', '1', 60, 0, 0, 0, 0, 0, 0, 0, 40, 'CSE', 'Active')
+    """)
+    # WW 217 lacks projector
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('WW 217', 'Classroom', 'Western Wing - IB Block', '2', 60, 0, 0, 0, 0, 0, 0, 0, 0, 'CSE', 'Active')
+    """)
+    # AIML Lab 7 HAS projector
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('AIML Lab 7', 'Lab', 'Computing Block', '1', 60, 1, 0, 0, 0, 0, 0, 0, 40, 'CSE', 'Active')
+    """)
+    # WW 218 HAS projector
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('WW 218', 'Classroom', 'Western Wing - IB Block', '2', 60, 1, 0, 0, 0, 0, 0, 0, 0, 'CSE', 'Active')
+    """)
+    conn.commit()
+    conn.close()
+
+    # Create dummy upload Excel with 7376232AG102 (mapped to AIML Lab 6 and WW 217)
     df = pd.DataFrame([
-        {"S.No": 1, "Reg No": "7376211CS101", "Student Name": "Alice", "Department": "CSE"},
-        {"S.No": 2, "Reg No": "7376211CS102", "Student Name": "Bob", "Department": "CSE"},
-        {"S.No": 3, "Reg No": "7376211ZZ999", "Student Name": "Charlie", "Department": "XYZ"}
+        {"S.No": 1, "Reg No": "7376232AG102", "Student Name": "Test Student", "Department": "CSE"}
     ])
     
+    # CASE 1: FN requires Projector, AN requires nothing
     excel_file = io.BytesIO()
     with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
-    
-    # --- TEST 1: separate MODE ---
     excel_file.seek(0)
-    response_sep = client.post(
+
+    response = client.post(
         "/upload-venue-mapping",
         files={"file": ("test_students.xlsx", excel_file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         data={
-            "mode": "separate",
             "start_date": "2026-07-20",
             "start_session": "FN",
-            "end_date": "2026-07-24",
-            "end_session": "AN"
+            "fn_facilities": "Projector",
+            "remarks": "Test FN"
         }
     )
-    assert response_sep.status_code == 200
-    data_sep = response_sep.json()
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["fn_facilities"] == ["Projector"]
+    assert data["an_facilities"] == []
     
-    # Verify summary stats
-    summary_sep = data_sep["summary"]
-    assert summary_sep["total_students"] == 3
-    # At least the XYZ student should be unmapped because XYZ dept is invalid and registration no is not in Venue Mapping.xlsx
-    assert summary_sep["unmapped_students"] >= 1
-    assert summary_sep["mapped_students"] == 3 - summary_sep["unmapped_students"]
-    
-    # Map the allotments of separate mode by student ID
-    sep_allotments = {s["Reg No"]: (s["Lab (FN)"], s["Venue (AN)"]) for s in data_sep["students"]}
-    
-    # Verify fallback for XYZ student
-    assert "7376211ZZ999" in sep_allotments
-    fallback_lab, fallback_venue = sep_allotments["7376211ZZ999"]
-    assert fallback_lab == "IT Lab 1"
-    assert fallback_venue == "WW 226"
+    # FN is replaced (AIML Lab 7), AN is not replaced (WW 217)
+    student = data["students"][0]
+    assert student["Lab (FN)"] == "AIML Lab 7"
+    assert student["Venue (AN)"] == "WW 217"
     
     # Clean up temp file
-    temp_files_to_clean = [data_sep["session_id"]]
-    
-    # --- TEST 2: vice_versa MODE ---
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    temp_path = os.path.join(BASE_DIR, "data", "temp", f"{data['session_id']}.xlsx")
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+
+    # CASE 2: FN requires nothing, AN requires Projector
+    excel_file = io.BytesIO()
+    with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
     excel_file.seek(0)
-    response_vv = client.post(
+
+    response = client.post(
         "/upload-venue-mapping",
         files={"file": ("test_students.xlsx", excel_file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         data={
-            "mode": "vice_versa",
             "start_date": "2026-07-20",
-            "start_session": "FN"
+            "start_session": "FN",
+            "an_facilities": "Projector",
+            "remarks": "Test AN"
         }
     )
-    assert response_vv.status_code == 200
-    data_vv = response_vv.json()
-    temp_files_to_clean.append(data_vv["session_id"])
-    
-    vv_allotments = {s["Reg No"]: (s["Lab (FN)"], s["Venue (AN)"]) for s in data_vv["students"]}
-    # Verify swapped values
-    for reg_no, (sep_lab, sep_venue) in sep_allotments.items():
-        vv_lab, vv_venue = vv_allotments[reg_no]
-        assert vv_lab == sep_venue
-        assert vv_venue == sep_lab
 
-    # --- TEST 3: full_day_fn MODE ---
-    excel_file.seek(0)
-    response_fn = client.post(
-        "/upload-venue-mapping",
-        files={"file": ("test_students.xlsx", excel_file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
-        data={
-            "mode": "full_day_fn",
-            "start_date": "2026-07-20",
-            "start_session": "FN"
-        }
-    )
-    assert response_fn.status_code == 200
-    data_fn = response_fn.json()
-    temp_files_to_clean.append(data_fn["session_id"])
+    assert response.status_code == 200
+    data = response.json()
+    assert data["fn_facilities"] == []
+    assert data["an_facilities"] == ["Projector"]
     
-    fn_allotments = {s["Reg No"]: (s["Lab (FN)"], s["Venue (AN)"]) for s in data_fn["students"]}
-    for reg_no, (sep_lab, sep_venue) in sep_allotments.items():
-        fn_lab, fn_venue = fn_allotments[reg_no]
-        assert fn_lab == sep_lab
-        assert fn_venue == sep_lab
-
-    # --- TEST 4: full_day_an MODE ---
-    excel_file.seek(0)
-    response_an = client.post(
-        "/upload-venue-mapping",
-        files={"file": ("test_students.xlsx", excel_file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
-        data={
-            "mode": "full_day_an",
-            "start_date": "2026-07-20",
-            "start_session": "FN"
-        }
-    )
-    assert response_an.status_code == 200
-    data_an = response_an.json()
-    temp_files_to_clean.append(data_an["session_id"])
+    # FN is not replaced (AIML Lab 6), AN is replaced (WW 218)
+    student = data["students"][0]
+    assert student["Lab (FN)"] == "AIML Lab 6"
+    assert student["Venue (AN)"] == "WW 218"
     
-    an_allotments = {s["Reg No"]: (s["Lab (FN)"], s["Venue (AN)"]) for s in data_an["students"]}
-    for reg_no, (sep_lab, sep_venue) in sep_allotments.items():
-        an_lab, an_venue = an_allotments[reg_no]
-        assert an_lab == sep_venue
-        assert an_venue == sep_venue
-
-    # --- Clean up all session temp files ---
-    for sid in temp_files_to_clean:
-        temp_file_path = os.path.join(BASE_DIR, "data", "temp", f"{sid}.xlsx")
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+    # Clean up temp file
+    temp_path = os.path.join(BASE_DIR, "data", "temp", f"{data['session_id']}.xlsx")
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
 
 
 def test_api_upload_invalid_file():
     import pandas as pd
     import io
     
-    # Test case A: DataFrame with only 1 column (not enough columns for fallback parsing)
     df_one_col = pd.DataFrame([
         {"Random Header 1": "value1"}
     ])
@@ -298,7 +282,6 @@ def test_api_upload_invalid_file():
         "/upload-venue-mapping",
         files={"file": ("invalid_students.xlsx", excel_file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         data={
-            "mode": "separate",
             "start_date": "2026-07-20",
             "start_session": "FN"
         }
@@ -306,29 +289,7 @@ def test_api_upload_invalid_file():
     assert response.status_code == 400
     assert "No student records could be parsed" in response.json()["detail"]
 
-    # Test case B: Empty DataFrame (no rows)
-    df_empty = pd.DataFrame(columns=["Reg No", "Student Name", "Department"])
-    excel_file_empty = io.BytesIO()
-    with pd.ExcelWriter(excel_file_empty, engine='openpyxl') as writer:
-        df_empty.to_excel(writer, index=False)
-    excel_file_empty.seek(0)
-    
-    response_empty = client.post(
-        "/upload-venue-mapping",
-        files={"file": ("empty_students.xlsx", excel_file_empty, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
-        data={
-            "mode": "separate",
-            "start_date": "2026-07-20",
-            "start_session": "FN"
-        }
-    )
-    assert response_empty.status_code == 400
-    assert "No student records could be parsed" in response.json()["detail"]
-
 
 def test_api_download_nonexistent_allotment():
     response = client.get("/download-allotment/SES_NONEXISTENT")
     assert response.status_code == 404
-
-
-

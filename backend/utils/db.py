@@ -6,13 +6,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_connection(db_path="data/campus_scheduler.db"):
+DEFAULT_DB_PATH = os.getenv("DB_PATH", "data/campus_scheduler.db")
+
+def get_connection(db_path=DEFAULT_DB_PATH):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db(db_path="data/campus_scheduler.db", config_path="config.json"):
+def init_db(db_path=DEFAULT_DB_PATH, config_path="config.json"):
     logger.info(f"Initializing database: {db_path}")
     conn = get_connection(db_path)
     cursor = conn.cursor()
@@ -141,11 +143,20 @@ def init_db(db_path="data/campus_scheduler.db", config_path="config.json"):
     )
     """)
     
+    # 9. Create Building Distances table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS building_distances (
+        building_a TEXT,
+        building_b TEXT,
+        distance_meters REAL
+    )
+    """)
+    
     conn.commit()
     conn.close()
     logger.info("Database tables initialized successfully.")
 
-def populate_db_from_csvs(db_path="data/campus_scheduler.db", synthetic_dir="data/synthetic"):
+def populate_db_from_csvs(db_path=DEFAULT_DB_PATH, synthetic_dir="data/synthetic"):
     logger.info("Populating database from synthetic data...")
     conn = get_connection(db_path)
     
@@ -182,13 +193,13 @@ def populate_db_from_csvs(db_path="data/campus_scheduler.db", synthetic_dir="dat
             
     conn.close()
 
-def load_venues_from_db(db_path="data/campus_scheduler.db"):
+def load_venues_from_db(db_path=DEFAULT_DB_PATH):
     conn = get_connection(db_path)
     df = pd.read_sql_query("SELECT * FROM venues WHERE status = 'Active'", conn)
     conn.close()
     return df
 
-def get_allocation_history_count(db_path="data/campus_scheduler.db"):
+def get_allocation_history_count(db_path=DEFAULT_DB_PATH):
     conn = get_connection(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM allocation_history")
@@ -196,7 +207,7 @@ def get_allocation_history_count(db_path="data/campus_scheduler.db"):
     conn.close()
     return count
 
-def save_allocation_to_db(alloc, db_path="data/campus_scheduler.db"):
+def save_allocation_to_db(alloc, db_path=DEFAULT_DB_PATH):
     conn = get_connection(db_path)
     cursor = conn.cursor()
     
@@ -214,7 +225,7 @@ def save_allocation_to_db(alloc, db_path="data/campus_scheduler.db"):
     conn.commit()
     conn.close()
 
-def save_seat_allocation_to_db(alloc_id, seating_list, db_path="data/campus_scheduler.db"):
+def save_seat_allocation_to_db(alloc_id, seating_list, db_path=DEFAULT_DB_PATH):
     conn = get_connection(db_path)
     cursor = conn.cursor()
     

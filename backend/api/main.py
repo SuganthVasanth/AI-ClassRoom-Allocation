@@ -180,12 +180,42 @@ def get_room_availability(
                     "capacity": v["capacity"],
                     "projector": v["projector"],
                     "ac": v["ac"],
-                    "num_pcs": v["num_pcs"]
+                    "num_pcs": v["num_pcs"],
+                    "department_preference": v.get("department_preference", "General")
                 })
                 
         return {"available_rooms_count": len(available_rooms), "rooms": available_rooms}
     except Exception as e:
         logger.error(f"Error in room-availability: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.get("/venues/all")
+def get_all_venues():
+    """Return every active venue without any availability filtering.
+    Used by the Venue Finder to search across all rooms regardless of schedule."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM venues WHERE status = 'Active' ORDER BY venue_name")
+        venues = [dict(row) for row in cursor.fetchall()]
+        result = []
+        for v in venues:
+            result.append({
+                "venue_name": v["venue_name"],
+                "venue_type": v["venue_type"],
+                "block": v["block"],
+                "floor": v["floor"],
+                "capacity": v["capacity"],
+                "projector": v.get("projector"),
+                "ac": v.get("ac"),
+                "num_pcs": v.get("num_pcs"),
+                "department_preference": v.get("department_preference", "General")
+            })
+        return {"total": len(result), "rooms": result}
+    except Exception as e:
+        logger.error(f"Error in venues/all: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
@@ -222,6 +252,106 @@ def get_model_info():
 
 # ----------------- STUDENT VENUE ALLOTMENT EXCEL ENDPOINTS -----------------
 
+FACILITY_COLUMN_MAP = {
+    "Projector": "projector",
+    "Wi-Fi": "wifi",
+    "AC": "ac",
+    "Audio System": "audio_video",
+    "Smart Board": "smart_board",
+    "Computers": "num_pcs"
+}
+
+def check_room_satisfies_facilities(room_dict, req_facs):
+    for fac in req_facs:
+        col = FACILITY_COLUMN_MAP.get(fac)
+        if not col:
+            continue
+        if col == "num_pcs":
+            if room_dict.get(col, 0) == 0:
+                return False
+        else:
+            if not room_dict.get(col):
+                return False
+    return True
+
+def get_suitable_replacement_room(orig_room_name, req_facs, student_dept, all_venues_list, venues_name_map, assigned_counts):
+    if not req_facs:
+        return orig_room_name
+        
+    orig_name_upper = orig_room_name.strip().upper()
+    orig_room = venues_name_map.get(orig_name_upper)
+    orig_type = orig_room["venue_type"] if orig_room else None
+    orig_block = orig_room["block"] if orig_room else None
+    
+    if not orig_type:
+        # Infer type from name
+        if "lab" in orig_room_name.lower() or "laboratory" in orig_room_name.lower():
+            orig_type = "Lab"
+        else:
+            orig_type = "Classroom"
+            
+    is_orig_lab = "lab" in orig_type.lower() or "laboratory" in orig_type.lower()
+    
+    candidates = []
+    for v in all_venues_list:
+        if not check_room_satisfies_facilities(v, req_facs):
+            continue
+            
+        # Verify type category match
+        is_candidate_lab = "lab" in v["venue_type"].lower() or "laboratory" in v["venue_type"].lower()
+        if is_candidate_lab != is_orig_lab:
+            continue
+            
+        v_name_upper = v["venue_name"].strip().upper()
+        current_count = assigned_counts.get(v_name_upper, 0)
+        capacity = v["capacity"]
+        
+        # Verify capacity constraint
+        if current_count >= capacity:
+            continue
+            
+        # Scoring metrics
+        # 1. Block Match (same block first)
+        block_score = 1 if (orig_block and v["block"] == orig_block) else 0
+        # 2. Dept Preference Match (student dept matches pref, then General, then others)
+        v_dept = v.get("department_preference", "General")
+        dept_score = 2 if (v_dept.upper() == student_dept.upper()) else (1 if v_dept == "General" else 0)
+        # 3. Capacity (larger first or sort preference)
+        cap_score = v["capacity"]
+        
+        candidates.append((v, block_score, dept_score, cap_score))
+        
+    if not candidates:
+        # Fallback: if all satisfying rooms are full, look at all satisfying rooms (even if full)
+        # and choose the one with the most remaining capacity (or least over-allocated)
+        for v in all_venues_list:
+            if not check_room_satisfies_facilities(v, req_facs):
+                continue
+            is_candidate_lab = "lab" in v["venue_type"].lower() or "laboratory" in v["venue_type"].lower()
+            if is_candidate_lab != is_orig_lab:
+                continue
+                
+            v_name_upper = v["venue_name"].strip().upper()
+            current_count = assigned_counts.get(v_name_upper, 0)
+            
+            block_score = 1 if (orig_block and v["block"] == orig_block) else 0
+            v_dept = v.get("department_preference", "General")
+            dept_score = 2 if (v_dept.upper() == student_dept.upper()) else (1 if v_dept == "General" else 0)
+            
+            # For fallback, sort by remaining capacity: capacity - current_count
+            remaining_cap = v["capacity"] - current_count
+            candidates.append((v, block_score, dept_score, remaining_cap))
+            
+        if not candidates:
+            return orig_room_name  # fallback to original if no candidate satisfies
+            
+        candidates.sort(key=lambda x: (-x[1], -x[2], -x[3]))
+        return candidates[0][0]["venue_name"]
+        
+    # Sort candidates: block_score (desc), dept_score (desc), cap_score (desc)
+    candidates.sort(key=lambda x: (-x[1], -x[2], -x[3]))
+    return candidates[0][0]["venue_name"]
+
 @app.post("/upload-venue-mapping")
 def upload_venue_mapping(
     file: UploadFile = File(...),
@@ -229,7 +359,11 @@ def upload_venue_mapping(
     start_date: str = Form(...),
     start_session: str = Form("FN"),
     end_date: Optional[str] = Form(None),
-    end_session: Optional[str] = Form("AN")
+    end_session: Optional[str] = Form("AN"),
+    fn_facilities: Optional[str] = Form(None),
+    an_facilities: Optional[str] = Form(None),
+    remarks: Optional[str] = Form(None),
+    strict_dept: bool = Form(False)
 ):
     import io
     import pandas as pd
@@ -243,6 +377,24 @@ def upload_venue_mapping(
         raise HTTPException(status_code=500, detail="Master Venue Mapping.xlsx file not found on the server.")
         
     try:
+        # Parse required facilities if provided
+        req_fn_facilities = []
+        if fn_facilities:
+            req_fn_facilities = [f.strip() for f in fn_facilities.split(",") if f.strip()]
+            
+        req_an_facilities = []
+        if an_facilities:
+            req_an_facilities = [f.strip() for f in an_facilities.split(",") if f.strip()]
+            
+        # Load active venues from database to support facility check
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM venues WHERE status = 'Active'")
+        all_venues = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        venues_by_name = {v["venue_name"].strip().upper(): v for v in all_venues}
+        
         # Load master mapping
         df_master = pd.read_excel(VENUE_MAPPING_PATH)
         # Clean master column names and data
@@ -269,9 +421,8 @@ def upload_venue_mapping(
         df_upload = pd.read_excel(io.BytesIO(contents))
         df_upload.columns = [str(c).strip() for c in df_upload.columns]
         
-        students_allotted = []
+        parsed_students = []
         unmapped_count = 0
-        
         for idx, row in df_upload.iterrows():
             row_keys = {str(k).lower().strip(): v for k, v in row.items()}
             
@@ -322,25 +473,190 @@ def upload_venue_mapping(
                 else:
                     unmapped_count += 1
             
-            # Apply allotment mode
-            if mode == "vice_versa":
-                # Swap Forenoon (venue_an) and Afternoon (lab_fn)
-                lab_fn, venue_an = venue_an, lab_fn
-            elif mode == "full_day_fn":
-                # Full day in Lab (FN)
-                venue_an = lab_fn
-            elif mode == "full_day_an":
-                # Full day in Venue (AN)
-                lab_fn = venue_an
-                
-            students_allotted.append({
-                "S.No": len(students_allotted) + 1,
-                "Reg No": reg_no,
-                "Student Name": name,
-                "Department": dept,
-                "Lab (FN)": lab_fn,
-                "Venue (AN)": venue_an
+            parsed_students.append({
+                "reg_no": reg_no,
+                "reg_no_upper": reg_no_upper,
+                "name": name,
+                "department": dept,
+                "orig_lab_fn": lab_fn,
+                "orig_venue_an": venue_an
             })
+            
+        import re
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s["reg_no"])]
+
+        students_allotted = []
+        assigned_fn = {}
+        assigned_an = {}
+        
+        # Group parsed students by department
+        from collections import defaultdict
+        dept_groups = defaultdict(list)
+        for s in parsed_students:
+            dept_groups[s["department"].strip().upper()].append(s)
+            
+        sorted_depts = sorted(list(dept_groups.keys()))
+
+        if strict_dept:
+            # Process department by department sequentially (leaving leftover capacity empty)
+            for dept_name in sorted_depts:
+                students_in_dept = sorted(dept_groups[dept_name], key=natural_sort_key)
+                dept_labs = sorted(list(set(s["orig_lab_fn"] for s in students_in_dept)))
+                dept_venues = sorted(list(set(s["orig_venue_an"] for s in students_in_dept)))
+                if not dept_labs:
+                    dept_labs = ["IT Lab 1"]
+                if not dept_venues:
+                    dept_venues = ["WW 226"]
+                    
+                # Allocate Forenoon Labs
+                lab_idx = 0
+                current_lab = dept_labs[0]
+                for s in students_in_dept:
+                    v_info = venues_by_name.get(current_lab.strip().upper())
+                    capacity = v_info["capacity"] if v_info else 40
+                    
+                    while assigned_fn.get(current_lab.strip().upper(), 0) >= capacity:
+                        lab_idx += 1
+                        if lab_idx < len(dept_labs):
+                            current_lab = dept_labs[lab_idx]
+                            v_info = venues_by_name.get(current_lab.strip().upper())
+                            capacity = v_info["capacity"] if v_info else 40
+                        else:
+                            last_lab = dept_labs[-1]
+                            current_lab = get_suitable_replacement_room(last_lab, req_fn_facilities or [], dept_name, all_venues, venues_by_name, assigned_fn)
+                            dept_labs.append(current_lab)
+                            v_info = venues_by_name.get(current_lab.strip().upper())
+                            capacity = v_info["capacity"] if v_info else 40
+                            
+                    resolved_lab = current_lab
+                    if req_fn_facilities:
+                        orig_room = venues_by_name.get(current_lab.strip().upper())
+                        if not (orig_room and check_room_satisfies_facilities(orig_room, req_fn_facilities)):
+                            resolved_lab = get_suitable_replacement_room(current_lab, req_fn_facilities, dept_name, all_venues, venues_by_name, assigned_fn)
+                            
+                    s["allotted_lab_fn"] = resolved_lab
+                    assigned_fn[resolved_lab.strip().upper()] = assigned_fn.get(resolved_lab.strip().upper(), 0) + 1
+                    
+                # Allocate Afternoon Venues
+                venue_idx = 0
+                current_venue = dept_venues[0]
+                for s in students_in_dept:
+                    v_info = venues_by_name.get(current_venue.strip().upper())
+                    capacity = v_info["capacity"] if v_info else 40
+                    
+                    while assigned_an.get(current_venue.strip().upper(), 0) >= capacity:
+                        venue_idx += 1
+                        if venue_idx < len(dept_venues):
+                            current_venue = dept_venues[venue_idx]
+                            v_info = venues_by_name.get(current_venue.strip().upper())
+                            capacity = v_info["capacity"] if v_info else 40
+                        else:
+                            last_venue = dept_venues[-1]
+                            current_venue = get_suitable_replacement_room(last_venue, req_an_facilities or [], dept_name, all_venues, venues_by_name, assigned_an)
+                            dept_venues.append(current_venue)
+                            v_info = venues_by_name.get(current_venue.strip().upper())
+                            capacity = v_info["capacity"] if v_info else 40
+                            
+                    resolved_venue = current_venue
+                    if req_an_facilities:
+                        orig_room = venues_by_name.get(current_venue.strip().upper())
+                        if not (orig_room and check_room_satisfies_facilities(orig_room, req_an_facilities)):
+                            resolved_venue = get_suitable_replacement_room(current_venue, req_an_facilities, dept_name, all_venues, venues_by_name, assigned_an)
+                            
+                    s["allotted_venue_an"] = resolved_venue
+                    assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
+                    
+                for s in students_in_dept:
+                    students_allotted.append({
+                        "S.No": len(students_allotted) + 1,
+                        "Reg No": s["reg_no"],
+                        "Student Name": s["name"],
+                        "Department": s["department"],
+                        "Lab (FN)": s["allotted_lab_fn"],
+                        "Venue (AN)": s["allotted_venue_an"]
+                    })
+        else:
+            # Process continuously across all departments to utilize venues to the fullest
+            students_pool = []
+            for dept_name in sorted_depts:
+                students_in_dept = sorted(dept_groups[dept_name], key=natural_sort_key)
+                students_pool.extend(students_in_dept)
+                
+            all_labs = sorted(list(set(s["orig_lab_fn"] for s in students_pool)))
+            all_venues_list = sorted(list(set(s["orig_venue_an"] for s in students_pool)))
+            if not all_labs:
+                all_labs = ["IT Lab 1"]
+            if not all_venues_list:
+                all_venues_list = ["WW 226"]
+                
+            # Allocate Forenoon Labs
+            lab_idx = 0
+            current_lab = all_labs[0]
+            for s in students_pool:
+                v_info = venues_by_name.get(current_lab.strip().upper())
+                capacity = v_info["capacity"] if v_info else 40
+                
+                while assigned_fn.get(current_lab.strip().upper(), 0) >= capacity:
+                    lab_idx += 1
+                    if lab_idx < len(all_labs):
+                        current_lab = all_labs[lab_idx]
+                        v_info = venues_by_name.get(current_lab.strip().upper())
+                        capacity = v_info["capacity"] if v_info else 40
+                    else:
+                        last_lab = all_labs[-1]
+                        current_lab = get_suitable_replacement_room(last_lab, req_fn_facilities or [], s["department"], all_venues, venues_by_name, assigned_fn)
+                        all_labs.append(current_lab)
+                        v_info = venues_by_name.get(current_lab.strip().upper())
+                        capacity = v_info["capacity"] if v_info else 40
+                        
+                resolved_lab = current_lab
+                if req_fn_facilities:
+                    orig_room = venues_by_name.get(current_lab.strip().upper())
+                    if not (orig_room and check_room_satisfies_facilities(orig_room, req_fn_facilities)):
+                        resolved_lab = get_suitable_replacement_room(current_lab, req_fn_facilities, s["department"], all_venues, venues_by_name, assigned_fn)
+                        
+                s["allotted_lab_fn"] = resolved_lab
+                assigned_fn[resolved_lab.strip().upper()] = assigned_fn.get(resolved_lab.strip().upper(), 0) + 1
+                
+            # Allocate Afternoon Venues
+            venue_idx = 0
+            current_venue = all_venues_list[0]
+            for s in students_pool:
+                v_info = venues_by_name.get(current_venue.strip().upper())
+                capacity = v_info["capacity"] if v_info else 40
+                
+                while assigned_an.get(current_venue.strip().upper(), 0) >= capacity:
+                    venue_idx += 1
+                    if venue_idx < len(all_venues_list):
+                        current_venue = all_venues_list[venue_idx]
+                        v_info = venues_by_name.get(current_venue.strip().upper())
+                        capacity = v_info["capacity"] if v_info else 40
+                    else:
+                        last_venue = all_venues_list[-1]
+                        current_venue = get_suitable_replacement_room(last_venue, req_an_facilities or [], s["department"], all_venues, venues_by_name, assigned_an)
+                        all_venues_list.append(current_venue)
+                        v_info = venues_by_name.get(current_venue.strip().upper())
+                        capacity = v_info["capacity"] if v_info else 40
+                        
+                resolved_venue = current_venue
+                if req_an_facilities:
+                    orig_room = venues_by_name.get(current_venue.strip().upper())
+                    if not (orig_room and check_room_satisfies_facilities(orig_room, req_an_facilities)):
+                        resolved_venue = get_suitable_replacement_room(current_venue, req_an_facilities, s["department"], all_venues, venues_by_name, assigned_an)
+                        
+                s["allotted_venue_an"] = resolved_venue
+                assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
+                
+            for s in students_pool:
+                students_allotted.append({
+                    "S.No": len(students_allotted) + 1,
+                    "Reg No": s["reg_no"],
+                    "Student Name": s["name"],
+                    "Department": s["department"],
+                    "Lab (FN)": s["allotted_lab_fn"],
+                    "Venue (AN)": s["allotted_venue_an"]
+                })
             
         if len(students_allotted) == 0:
             raise HTTPException(status_code=400, detail="No student records could be parsed from the uploaded Excel sheet. Please ensure columns include 'Reg No', 'Student Name' and 'Department'.")
@@ -381,7 +697,10 @@ def upload_venue_mapping(
             "start_date": start_date,
             "start_session": start_session,
             "end_date": end_date if end_date else start_date,
-            "end_session": end_session if end_date else start_session
+            "end_session": end_session if end_date else start_session,
+            "fn_facilities": req_fn_facilities,
+            "an_facilities": req_an_facilities,
+            "remarks": remarks
         }
         
     except HTTPException as he:

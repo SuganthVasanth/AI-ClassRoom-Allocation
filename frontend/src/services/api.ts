@@ -93,17 +93,23 @@ export const api = {
       method: 'GET',
     }),
 
+  getAllVenues: () =>
+    request<any>('/venues/all', {
+      method: 'GET',
+    }),
+
   uploadStudentExcel: async (
     file: File,
-    mode: string,
     startDate: string,
     startSession: string,
     endDate?: string,
-    endSession?: string
+    endSession?: string,
+    fnFacilities?: string[],
+    anFacilities?: string[],
+    remarks?: string
   ): Promise<any> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('mode', mode);
     formData.append('start_date', startDate);
     formData.append('start_session', startSession);
     if (endDate) {
@@ -111,6 +117,15 @@ export const api = {
     }
     if (endSession) {
       formData.append('end_session', endSession);
+    }
+    if (fnFacilities && fnFacilities.length > 0) {
+      formData.append('fn_facilities', fnFacilities.join(','));
+    }
+    if (anFacilities && anFacilities.length > 0) {
+      formData.append('an_facilities', anFacilities.join(','));
+    }
+    if (remarks) {
+      formData.append('remarks', remarks);
     }
 
     const response = await fetch(`${API_BASE_URL}/upload-venue-mapping`, {
@@ -124,7 +139,7 @@ export const api = {
       try {
         const err = JSON.parse(text);
         msg = err.detail || msg;
-      } catch {}
+      } catch { }
       throw new Error(msg);
     }
     return response.json();

@@ -41,7 +41,6 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
 
   // Bulk Upload States
   const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [allotmentMode, setAllotmentMode] = useState<string>('separate');
   
   const [dateType, setDateType] = useState<'single' | 'range'>('single');
   const [bulkStartDate, setBulkStartDate] = useState<string>('2026-07-20');
@@ -53,6 +52,9 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
   const [allotmentResults, setAllotmentResults] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [tablePage, setTablePage] = useState<number>(1);
+  const [bulkFnFacilities, setBulkFnFacilities] = useState<string[]>([]);
+  const [bulkAnFacilities, setBulkAnFacilities] = useState<string[]>([]);
+  const [bulkRemarks, setBulkRemarks] = useState('');
 
   const facilityOptions = ['Projector', 'Wi-Fi', 'AC', 'Audio System', 'Smart Board', 'Computers'];
 
@@ -71,6 +73,18 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
   // Handle facilities toggles
   const handleFacilityToggle = (facility: string) => {
     setSelectedFacilities((prev) =>
+      prev.includes(facility) ? prev.filter((f) => f !== facility) : [...prev, facility]
+    );
+  };
+
+  const handleBulkFnFacilityToggle = (facility: string) => {
+    setBulkFnFacilities((prev) =>
+      prev.includes(facility) ? prev.filter((f) => f !== facility) : [...prev, facility]
+    );
+  };
+
+  const handleBulkAnFacilityToggle = (facility: string) => {
+    setBulkAnFacilities((prev) =>
       prev.includes(facility) ? prev.filter((f) => f !== facility) : [...prev, facility]
     );
   };
@@ -248,11 +262,13 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
     try {
       const results = await api.uploadStudentExcel(
         excelFile,
-        allotmentMode,
         bulkStartDate,
         bulkStartSession,
         dateType === 'range' ? bulkEndDate : undefined,
-        dateType === 'range' ? bulkEndSession : undefined
+        dateType === 'range' ? bulkEndSession : undefined,
+        bulkFnFacilities,
+        bulkAnFacilities,
+        bulkRemarks
       );
       
       setAllotmentResults(results);
@@ -679,40 +695,72 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
                     ]}
                   />
                 </div>
-              )}
-
-              {/* Allotment Mode Selector */}
+              )}              {/* Required Facilities - Forenoon (FN) */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">Allotment Mode</label>
-                <div className="flex flex-col gap-2.5">
-                  {[
-                    { id: 'separate', label: 'Separate Sessions (FN Lab & AN Venue)', desc: 'Lab in the Morning, Lecture Room in the Afternoon' },
-                    { id: 'vice_versa', label: 'Separate Sessions (FN Venue & AN Lab)', desc: 'Lecture Room in the Morning, Lab in the Afternoon' },
-                    { id: 'full_day_fn', label: 'Full Day Lab (FN Only)', desc: 'Allotted to Forenoon Lab for both sessions' },
-                    { id: 'full_day_an', label: 'Full Day Venue (AN Only)', desc: 'Allotted to Afternoon Lecture Room for both sessions' },
-                  ].map((m) => (
-                    <div
-                      key={m.id}
-                      onClick={() => setAllotmentMode(m.id)}
-                      className={`p-3.5 border rounded-2xl cursor-pointer text-left transition-all ${
-                        allotmentMode === m.id
-                          ? 'border-primary bg-blue-50/20 dark:bg-primary/5 ring-1 ring-primary'
-                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          checked={allotmentMode === m.id}
-                          onChange={() => {}}
-                          className="accent-primary"
-                        />
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{m.label}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-1 pl-5">{m.desc}</p>
-                    </div>
-                  ))}
+                <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+                  Required Facilities - Forenoon (FN)
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {facilityOptions.map((fac) => {
+                    const isChecked = bulkFnFacilities.includes(fac);
+                    return (
+                      <button
+                        key={fac}
+                        type="button"
+                        onClick={() => handleBulkFnFacilityToggle(fac)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold select-none transition-all
+                          ${isChecked
+                            ? 'bg-blue-50 dark:bg-primary/20 text-primary border-primary'
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }
+                        `}
+                      >
+                        {fac}
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Required Facilities - Afternoon (AN) */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+                  Required Facilities - Afternoon (AN)
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {facilityOptions.map((fac) => {
+                    const isChecked = bulkAnFacilities.includes(fac);
+                    return (
+                      <button
+                        key={fac}
+                        type="button"
+                        onClick={() => handleBulkAnFacilityToggle(fac)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold select-none transition-all
+                          ${isChecked
+                            ? 'bg-blue-50 dark:bg-primary/20 text-primary border-primary'
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }
+                        `}
+                      >
+                        {fac}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Remarks */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="bulk-remarks" className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+                  Remarks / Additional Requirements
+                </label>
+                <textarea
+                  id="bulk-remarks"
+                  placeholder="e.g. Expert lecture series. Needs audio microphone testing."
+                  value={bulkRemarks}
+                  onChange={(e) => setBulkRemarks(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl transition-all duration-200 outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary min-h-[90px]"
+                />
               </div>
 
               {/* Excel File Drop Uploader */}

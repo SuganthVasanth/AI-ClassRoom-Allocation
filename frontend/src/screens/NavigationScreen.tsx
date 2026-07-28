@@ -57,15 +57,15 @@ export const NavigationScreen: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  // Load rooms from backend on mount
+  // Load all rooms from backend on mount (no availability filter — Venue Finder needs all rooms)
   useEffect(() => {
     const fetchRooms = async () => {
       setLoading(true);
       try {
-        const res = await api.checkRoomAvailability('2030-01-01', '09:00', '10:00');
+        const res = await api.getAllVenues();
         setRooms(res.rooms || []);
       } catch (err) {
-        console.error("Failed to load live rooms:", err);
+        console.error("Failed to load venues:", err);
       } finally {
         setLoading(false);
       }
@@ -257,6 +257,15 @@ export const NavigationScreen: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {selectedVenue.department_preference && selectedVenue.department_preference !== 'General' && (
+                    <div className="flex flex-col pt-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Department</span>
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                        {selectedVenue.department_preference}
+                      </span>
+                    </div>
+                  )}
 
                   {selectedVenue.capacity && selectedVenue.capacity !== '-' && (
                     <div className="mt-1 pt-3 border-t border-blue-50 dark:border-blue-950/40 flex justify-between items-center text-[11px]">
