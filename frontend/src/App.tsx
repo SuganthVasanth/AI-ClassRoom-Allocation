@@ -345,7 +345,7 @@ function MainApp() {
           )}
 
           {currentTab === 'history' && (
-            <BookingHistoryScreen requests={requests} onCancelRequest={handleCancelRequest} />
+            <BookingHistoryScreen onCancelRequest={handleCancelRequest} />
           )}
 
           {currentTab === 'timetable' && (

@@ -380,3 +380,66 @@ def test_api_upload_venue_mapping_overlap():
     temp_path = os.path.join(BASE_DIR, "data", "temp", f"{data['session_id']}.xlsx")
     if os.path.exists(temp_path):
         os.remove(temp_path)
+
+
+def test_api_student_allotment():
+    from utils.db import save_sqlite_booking
+    
+    # 1. Create a mock bulk allotment request
+    mock_payload = {
+        "id": "bulk-test-booking-123",
+        "booking_id": "bulk-test-booking-123",
+        "subject": "Mock Bulk Exam Allotment",
+        "start_date": "2026-07-20",
+        "end_date": "2026-07-24",
+        "start_session": "FN",
+        "end_session": "AN",
+        "status": "approved",
+        "isBulkAllotment": True,
+        "bulkDetails": {
+            "startDate": "2026-07-20",
+            "endDate": "2026-07-24",
+            "startSession": "FN",
+            "endSession": "AN",
+            "students": [
+                {
+                    "Reg No": "7376232CS999",
+                    "Student Name": "Portal Test Student",
+                    "Department": "CSE",
+                    "Lab (FN)": "AIML Lab 1",
+                    "Venue (AN)": "WW 226",
+                    "Email": "portal.student@bit.edu"
+                }
+            ],
+            "summary": {
+                "total_students": 1,
+                "mapped_students": 1
+            }
+        }
+    }
+    
+    # Save the mock allotment booking payload to test database fallback
+    db_path = "data/test_campus_scheduler.db"
+    save_sqlite_booking("bulk-test-booking-123", mock_payload, db_path=db_path)
+    
+    # 2. Call GET /student-allotment for email portal.student@bit.edu
+    response = client.get("/student-allotment?email=portal.student@bit.edu")
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Assert allotment fields match
+    assert len(data["allotments"]) == 1
+    allot = data["allotments"][0]
+    assert allot["id"] == "bulk-test-booking-123"
+    assert allot["subject"] == "Mock Bulk Exam Allotment"
+    assert allot["lab_fn"] == "AIML Lab 1"
+    assert allot["venue_an"] == "WW 226"
+    assert allot["student_name"] == "Portal Test Student"
+    
+    # Clean up the test database
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS booking_requests (id TEXT PRIMARY KEY, data TEXT)")
+    cursor.execute("DELETE FROM booking_requests WHERE id = 'bulk-test-booking-123'")
+    conn.commit()
+    conn.close()

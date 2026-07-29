@@ -57,6 +57,9 @@ export const getRoleFromEmail = (email: string): UserRole => {
   const facultyEmails = (import.meta.env.VITE_FACULTY_EMAILS || import.meta.env.VITE_TEACHER_EMAILS || '')
     .split(',')
     .map((e: string) => e.trim().toLowerCase());
+  const studentEmails = (import.meta.env.VITE_STUDENT_EMAILS || '')
+    .split(',')
+    .map((e: string) => e.trim().toLowerCase());
 
   if (superAdminEmails.includes(cleanEmail)) {
     return 'super_admin';
@@ -66,6 +69,9 @@ export const getRoleFromEmail = (email: string): UserRole => {
   }
   if (facultyEmails.includes(cleanEmail)) {
     return 'staff'; // 'staff' maps to faculty in UI
+  }
+  if (studentEmails.includes(cleanEmail)) {
+    return 'student';
   }
 
   // Any unspecified email address defaults to 'student'

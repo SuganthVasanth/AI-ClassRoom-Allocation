@@ -91,6 +91,11 @@ export const api = {
       method: 'GET',
     });
   },
+  getStudentAllotments: (email: string) => {
+    return request<any>(`/student-allotment?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+    });
+  },
 
   getModelInfo: () =>
     request<any>('/model-info', {
@@ -155,6 +160,11 @@ export const api = {
 
   getBookings: () =>
     request<any[]>('/bookings', {
+      method: 'GET',
+    }),
+
+  getMyBookings: (staffId: string) =>
+    request<any[]>(`/bookings?staff_id=${encodeURIComponent(staffId)}`, {
       method: 'GET',
     }),
 

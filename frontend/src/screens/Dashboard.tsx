@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../components/Toast';
@@ -12,7 +13,7 @@ import {
 import {
   Users, Building, School, FileCheck, CheckCircle2, XCircle, AlertTriangle, Clock,
   Calendar, MapPin, Sparkles, MessageSquare, ArrowUpRight, HelpCircle, Download,
-  Map as MapIcon
+  Map as MapIcon, ChevronRight, ChevronLeft, Award
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -31,6 +32,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const { user } = useAuth();
   const { theme } = useTheme();
   const { showToast } = useToast();
+
+  const [studentAllotments, setStudentAllotments] = useState<any[]>([]);
+  const [loadingAllotments, setLoadingAllotments] = useState(false);
+  const [allotmentIndex, setAllotmentIndex] = useState(0);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      const fetchStudentAllotments = async () => {
+        setLoadingAllotments(true);
+        try {
+          const res = await api.getStudentAllotments(user.email);
+          setStudentAllotments(res.allotments || []);
+        } catch (err) {
+          console.error("Failed to fetch student allotments:", err);
+        } finally {
+          setLoadingAllotments(false);
+        }
+      };
+      fetchStudentAllotments();
+    }
+  }, [user]);
 
   if (!user) return null;
 
@@ -543,9 +565,199 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const renderStudent = () => {
     // Current class highlight helper
     const activeClass = TIMETABLE_DATA[0]; // DSA with Rajesh Kumar
+    const totalAllotments = studentAllotments.length;
+    const safeIndex = Math.min(allotmentIndex, totalAllotments - 1);
+    const currentAllot = studentAllotments[safeIndex];
     
     return (
       <div className="flex flex-col gap-6 animate-fade-in">
+
+        {/* ───── Allotments: Carousel Switcher ───── */}
+        {loadingAllotments && (
+          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 p-6 animate-pulse flex flex-col gap-4">
+            <div className="h-4 w-48 bg-slate-200 dark:bg-slate-700 rounded-lg" />
+            <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+          </div>
+        )}
+
+        {!loadingAllotments && totalAllotments > 0 && (
+          <div className="flex flex-col gap-3 text-left">
+            {/* Section header + counter */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <Award className="w-3.5 h-3.5 text-amber-400" />
+                My Approved Venue Allotments
+              </h3>
+              {totalAllotments > 1 && (
+                <span className="text-[10px] font-extrabold bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 px-2.5 py-1 rounded-full">
+                  {safeIndex + 1} of {totalAllotments}
+                </span>
+              )}
+            </div>
+
+            {/* Card */}
+            <div
+              key={safeIndex}
+              className="relative rounded-2xl border border-amber-200/70 dark:border-amber-900/40 bg-gradient-to-br from-amber-50/60 via-white to-white dark:from-amber-950/20 dark:via-slate-900 dark:to-slate-900 shadow-sm overflow-hidden animate-fade-in"
+            >
+              {/* Top accent bar */}
+              <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400" />
+
+              <div className="p-5 flex flex-col gap-4">
+                {/* Header row */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-extrabold text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3" /> Approved Venue Allotment
+                    </span>
+                    <h4 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
+                      {currentAllot.subject}
+                    </h4>
+                    {currentAllot.remarks && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">"{currentAllot.remarks}"</p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <Calendar className="w-3 h-3" />
+                      {currentAllot.startDate}
+                      {currentAllot.endDate && currentAllot.endDate !== currentAllot.startDate
+                        ? ` → ${currentAllot.endDate}`
+                        : ''}
+                    </span>
+                    {(currentAllot.startSession || currentAllot.endSession) && (
+                      <p className="text-[10px] text-slate-400 mt-1 text-right">
+                        {currentAllot.startSession || 'FN'} → {currentAllot.endSession || 'AN'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Venue grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* FN Lab */}
+                  <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-indigo-100 dark:border-indigo-900/30 shadow-sm">
+                    <span className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">Forenoon (FN) · Lab</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center flex-shrink-0">
+                        <Building className="w-4.5 h-4.5 text-indigo-500" />
+                      </div>
+                      <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+                        {currentAllot.lab_fn || '—'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onChangeTab('navigation');
+                        showToast(`Locating ${currentAllot.lab_fn} on campus map...`, 'success');
+                      }}
+                      className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 text-left cursor-pointer bg-transparent border-none p-0 flex items-center gap-0.5 self-start"
+                    >
+                      <MapIcon className="w-3 h-3" /> Find Path <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* AN Venue */}
+                  <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-rose-100 dark:border-rose-900/30 shadow-sm">
+                    <span className="text-[10px] font-extrabold text-rose-500 uppercase tracking-widest">Afternoon (AN) · Venue</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center flex-shrink-0">
+                        <School className="w-4.5 h-4.5 text-rose-500" />
+                      </div>
+                      <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+                        {currentAllot.venue_an || '—'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onChangeTab('navigation');
+                        showToast(`Locating ${currentAllot.venue_an} on campus map...`, 'success');
+                      }}
+                      className="text-[10px] font-bold text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 text-left cursor-pointer bg-transparent border-none p-0 flex items-center gap-0.5 self-start"
+                    >
+                      <MapIcon className="w-3 h-3" /> Find Path <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Student info row */}
+                {(currentAllot.student_name || currentAllot.reg_no || currentAllot.department) && (
+                  <div className="flex flex-wrap gap-3 text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    {currentAllot.student_name && (
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" /> {currentAllot.student_name}
+                      </span>
+                    )}
+                    {currentAllot.reg_no && (
+                      <span className="font-mono font-bold text-slate-600 dark:text-slate-300">
+                        #{currentAllot.reg_no}
+                      </span>
+                    )}
+                    {currentAllot.department && (
+                      <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                        {currentAllot.department}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation controls — only if multiple */}
+              {totalAllotments > 1 && (
+                <div className="px-5 pb-4 flex items-center justify-between">
+                  {/* Dot indicators */}
+                  <div className="flex items-center gap-1.5">
+                    {studentAllotments.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setAllotmentIndex(idx)}
+                        className={`rounded-full transition-all cursor-pointer ${
+                          idx === safeIndex
+                            ? 'w-5 h-2 bg-amber-400'
+                            : 'w-2 h-2 bg-slate-300 dark:bg-slate-600 hover:bg-amber-300'
+                        }`}
+                        title={`Allotment ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Prev / Next */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setAllotmentIndex((i) => Math.max(0, i - 1))}
+                      disabled={safeIndex === 0}
+                      className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-800/50 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                    </button>
+                    <button
+                      onClick={() => setAllotmentIndex((i) => Math.min(totalAllotments - 1, i + 1))}
+                      disabled={safeIndex === totalAllotments - 1}
+                      className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-800/50 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer"
+                    >
+                      Next <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!loadingAllotments && totalAllotments === 0 && (
+          <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-6 text-center flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center">
+              <Award className="w-6 h-6 text-amber-300 dark:text-amber-700" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No allotments yet</p>
+              <p className="text-xs text-slate-400 dark:text-slate-600 mt-0.5">
+                Your approved venue allotments will appear here.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Active Class Hero card */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 border-l-4 border-l-primary bg-gradient-to-br from-white to-blue-50/20 dark:from-slate-800 dark:to-slate-900/40 relative overflow-hidden" header={

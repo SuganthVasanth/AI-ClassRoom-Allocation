@@ -870,6 +870,18 @@ def upload_venue_mapping(
             if dept == "General" and len(row) > 3:
                 dept = str(list(row.values)[3]).strip()
                 
+            # Smart email/mail id detection
+            email = ""
+            for k in ["mail id", "mail_id", "email", "student email", "student mail", "mail", "mailid"]:
+                if k in row_keys and pd.notna(row_keys[k]):
+                    email = str(row_keys[k]).strip()
+                    break
+            if not email:
+                for k, v in row.items():
+                    if pd.notna(v) and "@" in str(v):
+                        email = str(v).strip()
+                        break
+                        
             lab_fn = "IT Lab 1"
             venue_an = "WW 226"
             
@@ -890,7 +902,8 @@ def upload_venue_mapping(
                 "name": name,
                 "department": dept,
                 "orig_lab_fn": lab_fn,
-                "orig_venue_an": venue_an
+                "orig_venue_an": venue_an,
+                "email": email
             })
             
         import re
@@ -985,7 +998,8 @@ def upload_venue_mapping(
                         "Student Name": s["name"],
                         "Department": s["department"],
                         "Lab (FN)": s["allotted_lab_fn"],
-                        "Venue (AN)": s["allotted_venue_an"]
+                        "Venue (AN)": s["allotted_venue_an"],
+                        "Email": s.get("email", "")
                     })
         else:
             # Process continuously across all departments to utilize venues to the fullest
@@ -1066,7 +1080,8 @@ def upload_venue_mapping(
                     "Student Name": s["name"],
                     "Department": s["department"],
                     "Lab (FN)": s["allotted_lab_fn"],
-                    "Venue (AN)": s["allotted_venue_an"]
+                    "Venue (AN)": s["allotted_venue_an"],
+                    "Email": s.get("email", "")
                 })
             
         if len(students_allotted) == 0:
@@ -1213,12 +1228,15 @@ def create_booking(payload: dict = Body(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/bookings")
-def get_bookings():
+def get_bookings(staff_id: Optional[str] = Query(None, description="Filter bookings by staff/user ID")):
     if MONGO_ACTIVE:
         try:
             db = get_mongo_db()
             collection = db.bookings
-            cursor = collection.find({})
+            query = {}
+            if staff_id:
+                query["staffId"] = staff_id
+            cursor = collection.find(query)
             bookings = []
             for doc in cursor:
                 doc.pop("_id", None)
@@ -1229,7 +1247,10 @@ def get_bookings():
             
     # SQLite Fallback
     try:
-        return get_sqlite_bookings()
+        all_bookings = get_sqlite_bookings()
+        if staff_id:
+            all_bookings = [b for b in all_bookings if b.get("staffId") == staff_id]
+        return all_bookings
     except Exception as e:
         logger.error(f"Error in get_bookings SQLite fallback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1260,5 +1281,56 @@ def update_booking_status(booking_id: str, payload: StatusPayload):
     except Exception as e:
         logger.error(f"Error in update_booking_status SQLite fallback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/student-allotment")
+def get_student_allotment(email: str = Query(...)):
+    if not email:
+        raise HTTPException(status_code=400, detail="Email parameter is required.")
+        
+    all_booking_reqs = []
+    if MONGO_ACTIVE:
+        try:
+            db = get_mongo_db()
+            all_booking_reqs = list(db.bookings.find({"status": {"$regex": "(?i)^approved$"}}))
+        except Exception as e:
+            logger.error(f"Error querying MongoDB bookings for student portal: {e}")
+    else:
+        try:
+            all_booking_reqs = [b for b in get_sqlite_bookings() if b.get("status", "").lower() == "approved"]
+        except Exception as e:
+            logger.error(f"Error querying SQLite bookings for student portal: {e}")
+            
+    student_allotments = []
+    target_email = email.strip().lower()
+    
+    for req in all_booking_reqs:
+        if req.get("isBulkAllotment"):
+            bd = req.get("bulkDetails", {})
+            students = bd.get("students", [])
+            for s in students:
+                s_email = s.get("Email") or s.get("email") or ""
+                if str(s_email).strip().lower() == target_email:
+                    b_start = bd.get("startDate") or req.get("start_date")
+                    b_end = bd.get("endDate") or req.get("end_date")
+                    b_start_session = bd.get("startSession") or req.get("start_session") or "FN"
+                    b_end_session = bd.get("endSession") or req.get("end_session") or "AN"
+                    
+                    student_allotments.append({
+                        "id": req.get("id") or req.get("booking_id"),
+                        "subject": req.get("subject", "Bulk Student Allotment"),
+                        "startDate": b_start,
+                        "endDate": b_end,
+                        "startSession": b_start_session,
+                        "endSession": b_end_session,
+                        "remarks": req.get("remarks") or bd.get("remarks") or "",
+                        "lab_fn": s.get("Lab (FN)") or s.get("allotted_lab_fn") or "IT Lab 1",
+                        "venue_an": s.get("Venue (AN)") or s.get("allotted_venue_an") or "WW 226",
+                        "student_name": s.get("Student Name") or s.get("name") or "",
+                        "reg_no": s.get("Reg No") or s.get("reg_no") or "",
+                        "department": s.get("Department") or s.get("department") or ""
+                    })
+                    
+    return {"allotments": student_allotments}
 
 
