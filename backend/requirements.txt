@@ -8,3 +8,5 @@ uvicorn
 pydantic
 pytest
 httpx
+pymongo
+python-dotenv

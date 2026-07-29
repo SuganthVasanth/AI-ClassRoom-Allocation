@@ -187,6 +187,24 @@ export const VenueDetailModal: React.FC<VenueDetailModalProps> = ({
           </div>
         </div>
 
+        {/* Occupancy Schedules Section */}
+        {venue.status === 'occupied' && venue.schedules && venue.schedules.length > 0 && (
+          <div className="p-4 rounded-2xl bg-rose-50/20 dark:bg-rose-950/10 border border-rose-200/60 dark:border-rose-900/30 flex flex-col gap-2.5">
+            <h4 className="text-xs font-bold uppercase text-rose-500 tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-4 h-4" />
+              <span>Current Occupancy & Booking Schedules</span>
+            </h4>
+            <div className="flex flex-col gap-2">
+              {venue.schedules.map((sch, idx) => (
+                <div key={idx} className="text-xs text-rose-700 dark:text-rose-350 leading-relaxed flex items-start gap-1.5">
+                  <span className="text-rose-400 font-bold">•</span>
+                  <span>{sch.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Location & Department Mapping */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/80 flex flex-col gap-2">
           <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">

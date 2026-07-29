@@ -77,12 +77,16 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  checkRoomAvailability: (date: string, startTime: string, endTime: string) => {
-    const query = new URLSearchParams({
+  checkRoomAvailability: (date: string, startTime: string, endTime: string, includeOccupied: boolean = false) => {
+    const params: any = {
       date,
       start_time: startTime,
       end_time: endTime,
-    }).toString();
+    };
+    if (includeOccupied) {
+      params.include_occupied = 'true';
+    }
+    const query = new URLSearchParams(params).toString();
     return request<any>(`/room-availability?${query}`, {
       method: 'GET',
     });
@@ -148,5 +152,22 @@ export const api = {
   downloadAllotmentUrl: (sessionId: string) => {
     return `${API_BASE_URL}/download-allotment/${sessionId}`;
   },
+
+  getBookings: () =>
+    request<any[]>('/bookings', {
+      method: 'GET',
+    }),
+
+  createBookingRequest: (payload: any) =>
+    request<any>('/bookings', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateBookingStatus: (id: string, status: string) =>
+    request<any>(`/bookings/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
 };
 

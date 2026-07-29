@@ -293,3 +293,90 @@ def test_api_upload_invalid_file():
 def test_api_download_nonexistent_allotment():
     response = client.get("/download-allotment/SES_NONEXISTENT")
     assert response.status_code == 404
+
+
+def test_api_upload_venue_mapping_overlap():
+    import pandas as pd
+    import io
+    from utils.db import get_connection
+
+    # Setup database with specific venues and overlapping bookings
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM venues WHERE venue_name IN ('AIML Lab 6', 'AIML Lab 7', 'WW 217', 'WW 218')")
+    cursor.execute("DELETE FROM bookings WHERE booking_id IN ('test-booking-1', 'test-booking-2')")
+    
+    # 1. Insert venues
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('AIML Lab 6', 'Lab', 'Computing Block', '1', 2, 1, 0, 0, 0, 0, 0, 0, 40, 'CSE', 'Active')
+    """)
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('AIML Lab 7', 'Lab', 'Computing Block', '1', 5, 1, 0, 0, 0, 0, 0, 0, 40, 'CSE', 'Active')
+    """)
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('WW 217', 'Classroom', 'Western Wing - IB Block', '2', 2, 1, 0, 0, 0, 0, 0, 0, 0, 'CSE', 'Active')
+    """)
+    cursor.execute("""
+    INSERT INTO venues (venue_name, venue_type, block, floor, capacity, projector, led_tv, smart_board, ac, wifi, cctv, audio_video, num_pcs, department_preference, status)
+    VALUES ('WW 218', 'Classroom', 'Western Wing - IB Block', '2', 5, 1, 0, 0, 0, 0, 0, 0, 0, 'CSE', 'Active')
+    """)
+
+    # 2. Insert approved booking that fully occupies AIML Lab 6 in FN (capacity 2, booking student_count 2)
+    cursor.execute("""
+    INSERT INTO bookings (booking_id, venue_name, date, start_time, end_time, student_count, status)
+    VALUES ('test-booking-1', 'AIML Lab 6', '2026-07-20', '09:00', '13:00', 2, 'approved')
+    """)
+
+    # 3. Insert approved booking that fully occupies WW 217 in AN (capacity 2, booking student_count 2)
+    cursor.execute("""
+    INSERT INTO bookings (booking_id, venue_name, date, start_time, end_time, student_count, status)
+    VALUES ('test-booking-2', 'WW 217', '2026-07-20', '14:00', '17:00', 2, 'approved')
+    """)
+
+    conn.commit()
+    conn.close()
+
+    # 4. Upload sheet containing 7376232AG102 (which maps to AIML Lab 6 and WW 217 in master sheet)
+    df = pd.DataFrame([
+        {"S.No": 1, "Reg No": "7376232AG102", "Student Name": "Test Overlap Student", "Department": "CSE"}
+    ])
+
+    excel_file = io.BytesIO()
+    with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    excel_file.seek(0)
+
+    response = client.post(
+        "/upload-venue-mapping",
+        files={"file": ("test_students.xlsx", excel_file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={
+            "start_date": "2026-07-20",
+            "start_session": "FN",
+            "end_date": "2026-07-20",
+            "end_session": "AN"
+        }
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    
+    student = data["students"][0]
+    # AIML Lab 6 and WW 217 are fully occupied, so they must be replaced by AIML Lab 7 and WW 218 respectively
+    assert student["Lab (FN)"] == "AIML Lab 7"
+    assert student["Venue (AN)"] == "WW 218"
+
+    # Clean up booking requests
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM bookings WHERE booking_id IN ('test-booking-1', 'test-booking-2')")
+    conn.commit()
+    conn.close()
+
+    # Clean up temp file
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    temp_path = os.path.join(BASE_DIR, "data", "temp", f"{data['session_id']}.xlsx")
+    if os.path.exists(temp_path):
+        os.remove(temp_path)

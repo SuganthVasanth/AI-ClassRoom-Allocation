@@ -7,9 +7,29 @@ import { useToast } from '../components/Toast';
 import { CLASSROOMS } from '../constants/mockData';
 import { 
   FileCheck, Settings, Check, X, ShieldAlert, AlertTriangle, Hammer, MapPin, 
-  School, Calendar, Clock, Users, ArrowRight, ArrowLeft, Grid, Printer, Search, Award
+  School, Calendar, Clock, Users, ArrowRight, ArrowLeft, Grid, Printer, Search, Award, Download,
+  ChevronLeft, ChevronRight, FileSpreadsheet
 } from 'lucide-react';
 import { api } from '../services/api';
+
+const formatSubmitTime = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+    return `${day}-${month}-${year}, ${formattedHours}:${minutes} ${ampm}`;
+  } catch {
+    return dateStr;
+  }
+};
 
 interface AdminScreensProps {
   subTab: string;
@@ -28,6 +48,11 @@ export const AdminScreens: React.FC<AdminScreensProps> = ({
 }) => {
   const { showToast } = useToast();
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+
+  // Bulk Allotment Detail States
+  const [selectedBulkReq, setSelectedBulkReq] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [tablePage, setTablePage] = useState<number>(1);
 
   // Exam Scheduling States
   const [activePhase, setActivePhase] = useState<'halls' | 'seating'>('halls');
@@ -55,11 +80,17 @@ export const AdminScreens: React.FC<AdminScreensProps> = ({
   const [seatingResult, setSeatingResult] = useState<any | null>(null);
   const [seatingSearch, setSeatingSearch] = useState('');
 
-  // Filter requests
-  const filteredRequests = requests.filter((r) => {
-    if (filter === 'all') return true;
-    return r.status === filter;
-  });
+  // Filter and sort requests (latest first)
+  const filteredRequests = [...requests]
+    .filter((r) => {
+      if (filter === 'all') return true;
+      return r.status === filter;
+    })
+    .sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
 
   const handleToggleMaintenance = (roomId: string) => {
     if (onToggleMaintenance) {
@@ -235,6 +266,11 @@ export const AdminScreens: React.FC<AdminScreensProps> = ({
                 
                 <p className="text-xs text-slate-500">
                   Staff: <span className="font-semibold">{req.staffName}</span> | Date: <span className="font-medium text-slate-700 dark:text-slate-350">{req.date}</span> | Time: <span className="font-medium text-slate-700 dark:text-slate-350">{req.time} ({req.duration} hrs)</span>
+                  {req.createdAt && (
+                    <>
+                      {' '}| Submitted: <span className="font-medium text-slate-700 dark:text-slate-350">{formatSubmitTime(req.createdAt)}</span>
+                    </>
+                  )}
                 </p>
 
                 {req.remarks && (
@@ -243,10 +279,45 @@ export const AdminScreens: React.FC<AdminScreensProps> = ({
                   </p>
                 )}
 
-                {req.allocatedClassroomName && (
+                {req.allocatedClassroomName && !req.isBulkAllotment && (
                   <span className="text-xs text-emerald-600 font-bold mt-1.5 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" /> Pre-allocated Classroom: {req.allocatedClassroomName}
                   </span>
+                )}
+
+                {req.isBulkAllotment && req.bulkDetails && (
+                  <div className="mt-2 flex flex-col gap-1.5 p-3 bg-indigo-50/50 dark:bg-slate-950/20 rounded-xl border border-indigo-100/40 dark:border-slate-800 text-xs">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1 bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 font-extrabold px-2 py-0.5 rounded text-[10px]">
+                        Bulk Allotment Request
+                      </span>
+                      <span>Mapped: <strong>{req.bulkDetails.summary.mapped_students}</strong> / {req.bulkDetails.summary.total_students} students</span>
+                      <span>•</span>
+                      <span>Labs: <strong>{req.bulkDetails.uniqueLabsCount}</strong></span>
+                      <span>•</span>
+                      <span>Venues: <strong>{req.bulkDetails.uniqueVenuesCount}</strong></span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 mt-0.5">
+                      <a
+                        href={api.downloadAllotmentUrl(req.bulkDetails.sessionId)}
+                        download="Requested_Venue_Mapping.xlsx"
+                        className="inline-flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-500" /> Download Generated Allotment Plan (Excel)
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedBulkReq(req);
+                          setSearchQuery('');
+                          setTablePage(1);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-primary hover:text-indigo-750 dark:hover:text-indigo-300 font-bold cursor-pointer border-none bg-transparent p-0 text-xs"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-primary" /> View Allotment Details & Charts
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -868,6 +939,336 @@ export const AdminScreens: React.FC<AdminScreensProps> = ({
     );
   };
 
+  const renderBulkDetailsModal = () => {
+    if (!selectedBulkReq || !selectedBulkReq.bulkDetails) return null;
+    const bd = selectedBulkReq.bulkDetails;
+    const summary = bd.summary;
+    const students = bd.students || [];
+
+    const ITEMS_PER_PAGE = 10;
+
+    const filteredStudents = students.filter((student: any) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        String(student['Student Name'] || '').toLowerCase().includes(query) ||
+        String(student['Reg No'] || '').toLowerCase().includes(query) ||
+        String(student['Department'] || '').toLowerCase().includes(query) ||
+        String(student['Lab (FN)'] || '').toLowerCase().includes(query) ||
+        String(student['Venue (AN)'] || '').toLowerCase().includes(query)
+      );
+    });
+
+    const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
+
+    const paginatedStudents = filteredStudents.slice(
+      (tablePage - 1) * ITEMS_PER_PAGE,
+      tablePage * ITEMS_PER_PAGE
+    );
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+        <div className="relative w-full max-w-5xl max-h-[90vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-zoom-in">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-550/10 rounded-xl text-primary">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">
+                  Bulk Allotment Request Details
+                </h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Requested by <strong className="text-slate-700 dark:text-slate-350">{selectedBulkReq.staffName}</strong> • {selectedBulkReq.subject}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase border ${
+                selectedBulkReq.status === 'approved' 
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20' 
+                  : selectedBulkReq.status === 'rejected'
+                    ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20'
+                    : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20'
+              }`}>
+                {selectedBulkReq.status}
+              </span>
+              <button
+                onClick={() => setSelectedBulkReq(null)}
+                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-650 transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 text-left">
+            {/* KPI Cards Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-4 rounded-2xl text-left">
+                <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Total Students</p>
+                <h3 className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">
+                  {summary.total_students}
+                </h3>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-4 rounded-2xl text-left">
+                <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Mapped Status</p>
+                <h3 className="text-xl font-extrabold text-emerald-555 mt-1 animate-pulse">
+                  {summary.mapped_students} <span className="text-[11px] text-slate-400 font-medium">/{summary.total_students}</span>
+                </h3>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-4 rounded-2xl text-left">
+                <p className="text-[9px] text-slate-455 font-bold uppercase tracking-wider">Unique Labs</p>
+                <h3 className="text-xl font-extrabold text-blue-500 mt-1">
+                  {summary.unique_labs_count || bd.uniqueLabsCount}
+                </h3>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-4 rounded-2xl text-left">
+                <p className="text-[9px] text-slate-455 font-bold uppercase tracking-wider">Unique Venues</p>
+                <h3 className="text-xl font-extrabold text-amber-500 mt-1">
+                  {summary.unique_venues_count || bd.uniqueVenuesCount}
+                </h3>
+              </div>
+            </div>
+
+            {/* Info bar on duration and download */}
+            <div className="bg-gradient-to-r from-blue-500/10 via-primary/5 to-emerald-500/10 border border-primary/20 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Duration: {bd.startDate} ({bd.startSession})
+                    {bd.endDate !== bd.startDate || bd.endSession !== bd.startSession ? (
+                      <>
+                        <ArrowRight className="w-3.5 h-3.5 inline mx-1.5 text-slate-400" />
+                        {bd.endDate} ({bd.endSession})
+                      </>
+                    ) : null}
+                  </h4>
+                  <p className="text-[9px] text-slate-450 mt-0.5">
+                    Timings: FN (9:00 AM - 12:30 PM) | AN (1:30 PM - 4:30 PM)
+                  </p>
+                </div>
+              </div>
+              
+              <a
+                href={api.downloadAllotmentUrl(bd.sessionId)}
+                download="Venue Mapping.xlsx"
+                className="px-4 py-2 bg-emerald-550 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5 text-xs select-none border border-transparent cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-white" />
+                Download Excel
+              </a>
+            </div>
+
+            {/* Distributions Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Lab distribution */}
+              <Card className="shadow-xs bg-slate-50/50 dark:bg-slate-900/50" header={
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-350 font-sans">
+                  Forenoon Lab Distribution
+                </span>
+              }>
+                <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
+                  {(summary.lab_distribution || []).map((d: any) => {
+                    const pct = Math.round((d.count / summary.total_students) * 100);
+                    return (
+                      <div key={d.venue} className="flex flex-col gap-1 text-left">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-650 dark:text-slate-350">
+                          <span>{d.venue}</span>
+                          <span>{d.count} students ({pct === 0 && d.count > 0 ? '<1' : pct}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${Math.max(2, pct)}%` }}
+                            className="bg-blue-500 h-full rounded-full transition-all"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+
+              {/* Venue distribution */}
+              <Card className="shadow-xs bg-slate-50/50 dark:bg-slate-900/50" header={
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-350 font-sans">
+                  Afternoon Lecture Room Distribution
+                </span>
+              }>
+                <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
+                  {(summary.venue_distribution || []).map((d: any) => {
+                    const pct = Math.round((d.count / summary.total_students) * 100);
+                    return (
+                      <div key={d.venue} className="flex flex-col gap-1 text-left">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-650 dark:text-slate-350">
+                          <span>{d.venue}</span>
+                          <span>{d.count} students ({pct === 0 && d.count > 0 ? '<1' : pct}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${Math.max(2, pct)}%` }}
+                            className="bg-amber-500 h-full rounded-full transition-all"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </div>
+
+            {/* Interactive student list table */}
+            <Card className="shadow-xs bg-slate-50/50 dark:bg-slate-900/50" header={
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 w-full">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-350 text-left">
+                  Allotted Students List
+                </span>
+                
+                {/* Search bar */}
+                <div className="relative w-full sm:w-64">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <Search className="w-3.5 h-3.5" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search Name, Reg No, Dept..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setTablePage(1);
+                    }}
+                    className="w-full pl-9 pr-4 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary text-slate-805 dark:text-slate-200 placeholder-slate-450"
+                  />
+                </div>
+              </div>
+            }>
+              <div className="overflow-x-auto w-full border border-slate-200 dark:border-slate-850 rounded-2xl bg-white dark:bg-slate-900">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800">
+                      <th className="p-2.5 font-bold text-slate-550">S.No</th>
+                      <th className="p-2.5 font-bold text-slate-550">Reg No</th>
+                      <th className="p-2.5 font-bold text-slate-550">Name</th>
+                      <th className="p-2.5 font-bold text-slate-550">Department</th>
+                      <th className="p-2.5 font-bold text-slate-550">Forenoon Session</th>
+                      <th className="p-2.5 font-bold text-slate-550">Afternoon Session</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-slate-400 font-semibold">
+                          No records found matching search query.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedStudents.map((std: any) => (
+                        <tr key={std['Reg No']} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
+                          <td className="p-2.5 font-medium text-slate-500">{std['S.No']}</td>
+                          <td className="p-2.5 font-bold text-slate-800 dark:text-slate-200">{std['Reg No']}</td>
+                          <td className="p-2.5 font-medium text-slate-700 dark:text-slate-300">{std['Student Name']}</td>
+                          <td className="p-2.5 text-slate-550 truncate max-w-[150px]" title={std['Department']}>
+                            {std['Department']}
+                          </td>
+                          <td className="p-2.5">
+                            <span className="inline-flex items-center bg-blue-50 dark:bg-blue-955/40 border border-blue-100 dark:border-blue-900/20 text-blue-650 dark:text-blue-400 px-2 py-0.5 rounded-lg font-bold">
+                              {std['Lab (FN)']}
+                            </span>
+                          </td>
+                          <td className="p-2.5">
+                            <span className="inline-flex items-center bg-amber-50 dark:bg-amber-955/40 border border-amber-100 dark:border-amber-900/20 text-amber-650 dark:text-amber-400 px-2 py-0.5 rounded-lg font-bold">
+                              {std['Venue (AN)']}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Showing {(tablePage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(tablePage * ITEMS_PER_PAGE, filteredStudents.length)} of {filteredStudents.length} students
+                  </span>
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      disabled={tablePage === 1}
+                      onClick={() => setTablePage(prev => Math.max(prev - 1, 1))}
+                      className="p-1 border border-slate-250 dark:border-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    <span className="text-xs font-bold text-slate-755 dark:text-slate-350 px-2">
+                      Page {tablePage} of {totalPages}
+                    </span>
+
+                    <button
+                      disabled={tablePage === totalPages}
+                      onClick={() => setTablePage(prev => Math.min(prev + 1, totalPages))}
+                      className="p-1 border border-slate-250 dark:border-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedBulkReq(null)}
+            >
+              Close
+            </Button>
+            {selectedBulkReq.status === 'pending' && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={<X className="w-4 h-4" />}
+                  onClick={() => {
+                    onRejectRequest(selectedBulkReq.id);
+                    setSelectedBulkReq(null);
+                    showToast('Booking request declined.', 'info');
+                  }}
+                >
+                  Decline
+                </Button>
+                <Button
+                  variant="accent"
+                  size="sm"
+                  icon={<Check className="w-4 h-4" />}
+                  onClick={() => {
+                    onApproveRequest(selectedBulkReq.id);
+                    setSelectedBulkReq(null);
+                    showToast('Booking request approved!', 'success');
+                  }}
+                >
+                  Approve
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-6 text-left animate-fade-in">
       <div className="border-b border-slate-100 dark:border-slate-800 pb-5 print:hidden">
@@ -882,6 +1283,9 @@ export const AdminScreens: React.FC<AdminScreensProps> = ({
       {subTab === 'approvals' && renderApprovals()}
       {subTab === 'maintenance' && renderMaintenance()}
       {subTab === 'exams' && renderExams()}
+
+      {/* Bulk Allotment details modal */}
+      {selectedBulkReq && renderBulkDetailsModal()}
     </div>
   );
 };

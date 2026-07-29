@@ -151,6 +151,14 @@ def init_db(db_path=DEFAULT_DB_PATH, config_path="config.json"):
         distance_meters REAL
     )
     """)
+
+    # 10. Create booking_requests table (SQLite fallback for MongoDB document storage)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS booking_requests (
+        id TEXT PRIMARY KEY,
+        data TEXT
+    )
+    """)
     
     conn.commit()
     conn.close()
@@ -252,5 +260,65 @@ def save_seat_allocation_to_db(alloc_id, seating_list, db_path=DEFAULT_DB_PATH, 
         
     conn.commit()
     if should_close:
+      conn.close()
+
+def get_sqlite_bookings(db_path=DEFAULT_DB_PATH):
+    """
+    Retrieve all booking request JSON payloads from SQLite fallback.
+    """
+    import json
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    # Ensure table exists (just in case)
+    cursor.execute("CREATE TABLE IF NOT EXISTS booking_requests (id TEXT PRIMARY KEY, data TEXT)")
+    cursor.execute("SELECT data FROM booking_requests")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    bookings = []
+    for row in rows:
+        try:
+            bookings.append(json.loads(row[0]))
+        except Exception as e:
+            logger.error(f"Error decoding SQLite booking JSON: {e}")
+    return bookings
+
+def save_sqlite_booking(booking_id, payload, db_path=DEFAULT_DB_PATH):
+    """
+    Save or replace a booking request JSON payload in SQLite fallback.
+    """
+    import json
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS booking_requests (id TEXT PRIMARY KEY, data TEXT)")
+    
+    # Store clean serialized copy
+    data_str = json.dumps(payload)
+    cursor.execute("INSERT OR REPLACE INTO booking_requests (id, data) VALUES (?, ?)", (booking_id, data_str))
+    conn.commit()
+    conn.close()
+
+def update_sqlite_booking_status(booking_id, status, db_path=DEFAULT_DB_PATH):
+    """
+    Fetch, update status, and save a booking request payload in SQLite fallback.
+    """
+    import json
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS booking_requests (id TEXT PRIMARY KEY, data TEXT)")
+    cursor.execute("SELECT data FROM booking_requests WHERE id = ?", (booking_id,))
+    row = cursor.fetchone()
+    if not row:
         conn.close()
+        return None
+        
+    payload = json.loads(row[0])
+    payload["status"] = status
+    
+    data_str = json.dumps(payload)
+    cursor.execute("INSERT OR REPLACE INTO booking_requests (id, data) VALUES (?, ?)", (booking_id, data_str))
+    conn.commit()
+    conn.close()
+    return payload
+
 

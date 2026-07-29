@@ -22,6 +22,7 @@ export interface Classroom {
   imageUrl: string;
   qrCodeUrl: string;
   status: 'available' | 'occupied' | 'reserved' | 'maintenance';
+  schedules?: { type: string; description: string }[];
 }
 
 export interface BookingRequest {

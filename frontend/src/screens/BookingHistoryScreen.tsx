@@ -4,7 +4,9 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useToast } from '../components/Toast';
-import { Calendar, Search, MapPin, CheckCircle2, Clock, Trash2, XCircle } from 'lucide-react';
+import { Calendar, Search, MapPin, CheckCircle2, Clock, Trash2, XCircle, Download } from 'lucide-react';
+import { api } from '../services/api';
+
 
 interface BookingHistoryProps {
   requests: any[];
@@ -94,12 +96,34 @@ export const BookingHistoryScreen: React.FC<BookingHistoryProps> = ({
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" /> {req.time} ({req.duration} hrs)
                     </span>
-                    {req.allocatedClassroomName && (
+                    {req.allocatedClassroomName && !req.isBulkAllotment && (
                       <span className="flex items-center gap-1 text-emerald-600 font-bold">
                         <MapPin className="w-3.5 h-3.5 text-rose-500" /> {req.allocatedClassroomName}
                       </span>
                     )}
                   </div>
+
+                  {req.isBulkAllotment && req.bulkDetails && (
+                    <div className="mt-2 flex flex-col gap-1.5 p-3 bg-indigo-50/50 dark:bg-slate-950/20 rounded-xl border border-indigo-100/40 dark:border-slate-800 text-xs max-w-xl">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
+                        <span className="inline-flex items-center gap-1 bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 font-extrabold px-2 py-0.5 rounded text-[10px]">
+                          Bulk Allotment
+                        </span>
+                        <span>Mapped: <strong>{req.bulkDetails.summary.mapped_students}</strong> / {req.bulkDetails.summary.total_students} students</span>
+                        <span>•</span>
+                        <span>Labs: <strong>{req.bulkDetails.uniqueLabsCount}</strong></span>
+                        <span>•</span>
+                        <span>Venues: <strong>{req.bulkDetails.uniqueVenuesCount}</strong></span>
+                      </div>
+                      <a
+                        href={api.downloadAllotmentUrl(req.bulkDetails.sessionId)}
+                        download="Requested_Venue_Mapping.xlsx"
+                        className="inline-flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold self-start mt-0.5 cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-500" /> Download Generated Allotment Plan (Excel)
+                      </a>
+                    </div>
+                  )}
 
                   {req.remarks && (
                     <p className="text-xs text-slate-450 italic mt-0.5 bg-slate-50/50 dark:bg-slate-905/30 p-2 rounded-lg border border-slate-100 dark:border-slate-800/80 max-w-xl">

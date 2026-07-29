@@ -5178,42 +5178,7 @@ export const CLASSROOMS: Classroom[] = [
   }
 ];
 
-export const INITIAL_REQUESTS: BookingRequest[] = [
-  {
-    id: 'req-1',
-    staffId: 'FAC5001',
-    staffName: 'Dr. C. Palanisamy',
-    subject: 'AI & Neural Networks Seminar',
-    date: '2026-07-29',
-    time: '09:00',
-    duration: 2,
-    strength: 65,
-    facilities: ['Projector', 'Wi-Fi', 'Audio System'],
-    preferredBuildingId: 'bld-1',
-    remarks: 'Special AI guest lecture',
-    status: 'pending',
-    allocatedClassroomId: 'room-ib201',
-    allocatedClassroomName: 'IB201 (Lecture Hall)',
-    createdAt: '2026-07-29T08:00:00Z'
-  },
-  {
-    id: 'req-2',
-    staffId: 'FAC5002',
-    staffName: 'Dr. M. Priyadharshini',
-    subject: 'Cloud Computing Lab Exam',
-    date: '2026-07-29',
-    time: '11:15',
-    duration: 2,
-    strength: 45,
-    facilities: ['Computers', 'AC'],
-    preferredBuildingId: 'bld-1',
-    remarks: 'Practical exam',
-    status: 'approved',
-    allocatedClassroomId: 'room-it-lab-1',
-    allocatedClassroomName: 'IT Lab 1 (Computer Lab)',
-    createdAt: '2026-07-29T08:30:00Z'
-  }
-];
+export const INITIAL_REQUESTS: BookingRequest[] = [];
 
 export const TIMETABLE_DATA: TimetableSlot[] = [
   {

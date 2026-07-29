@@ -30,9 +30,9 @@ export const AvailabilityScreen: React.FC = () => {
     setLoading(true);
     setSearched(true);
     try {
-      const res = await api.checkRoomAvailability(date, startTime, endTime);
+      const res = await api.checkRoomAvailability(date, startTime, endTime, true);
       setRooms(res.rooms || []);
-      showToast(`Found ${res.available_rooms_count} available rooms.`, 'success');
+      showToast(`Search completed. Found ${res.available_rooms_count} vacant rooms.`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Error checking room availability', 'error');
     } finally {
@@ -70,7 +70,8 @@ export const AvailabilityScreen: React.FC = () => {
       equipment: eqs,
       imageUrl: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&auto=format&fit=crop&q=60',
       qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BIT-SmartCampus-${room.venue_name}`,
-      status: 'available'
+      status: room.status === 'Occupied' ? 'occupied' : 'available',
+      schedules: room.schedules
     };
 
     setSelectedVenueModal(modalObj);
@@ -141,7 +142,7 @@ export const AvailabilityScreen: React.FC = () => {
         <Card className="lg:col-span-2 shadow-sm min-h-[300px]" header={
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              Vacant Classrooms
+              Classroom Lookup / Availability
             </h3>
             {searched && (
               <div className="flex items-center gap-2">
@@ -159,9 +160,14 @@ export const AvailabilityScreen: React.FC = () => {
                     </button>
                   )}
                 </div>
-                <span className="text-[10px] bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full border border-primary/20 whitespace-nowrap">
-                  {filteredRooms.length} Vacant
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2.5 py-1 rounded-full border border-emerald-500/20 whitespace-nowrap">
+                    {filteredRooms.filter(r => r.status !== 'Occupied').length} Vacant
+                  </span>
+                  <span className="text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-450 font-bold px-2.5 py-1 rounded-full border border-rose-500/20 whitespace-nowrap">
+                    {filteredRooms.filter(r => r.status === 'Occupied').length} Occupied
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -188,12 +194,27 @@ export const AvailabilityScreen: React.FC = () => {
                 <div
                   key={room.venue_name}
                   onClick={() => handleOpenDetail(room)}
-                  className="p-4 bg-slate-50 dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-2xl flex justify-between items-start hover:border-primary/50 hover:shadow-md cursor-pointer transition-all group"
+                  className={`p-4 rounded-2xl flex flex-col justify-between items-stretch hover:shadow-md cursor-pointer transition-all group border text-left ${
+                    room.status === 'Occupied'
+                      ? 'bg-rose-50/20 dark:bg-rose-950/10 border-rose-200/50 dark:border-rose-900/30 hover:border-rose-450/40'
+                      : 'bg-slate-50 dark:bg-slate-905 border-slate-200 dark:border-slate-800 hover:border-primary/50'
+                  }`}
                 >
-                  <div className="flex flex-col gap-1.5 text-left">
-                    <span className="font-extrabold text-sm text-slate-850 dark:text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-primary" /> {room.venue_name}
-                    </span>
+                  <div className="flex flex-col gap-1.5 text-left w-full">
+                    <div className="flex justify-between items-start w-full">
+                      <span className="font-extrabold text-sm text-slate-850 dark:text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-primary" /> {room.venue_name}
+                      </span>
+                      {room.status === 'Occupied' ? (
+                        <span className="text-[9px] bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold px-2.5 py-0.5 rounded-md border border-rose-100 dark:border-rose-900/30">
+                          Occupied
+                        </span>
+                      ) : (
+                        <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold px-2.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-900/30">
+                          Vacant
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                       {room.block} • Floor {room.floor}
                     </span>
@@ -217,6 +238,18 @@ export const AvailabilityScreen: React.FC = () => {
                         </span>
                       )}
                     </div>
+
+                    {room.status === 'Occupied' && room.schedules && room.schedules.length > 0 && (
+                      <div className="mt-2.5 text-[11px] text-rose-700 dark:text-rose-300 border-t border-rose-100/60 dark:border-rose-900/35 pt-2 flex flex-col gap-1 w-full">
+                        <span className="font-extrabold uppercase tracking-wider text-[9px] text-rose-500">Current Occupancy:</span>
+                        {room.schedules.map((sch: any, sIdx: number) => (
+                          <div key={sIdx} className="leading-tight flex items-start gap-1">
+                            <span className="text-rose-400">•</span>
+                            <span>{sch.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

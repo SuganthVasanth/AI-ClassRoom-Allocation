@@ -23,6 +23,7 @@ import { AvailabilityScreen } from './screens/AvailabilityScreen';
 import { INITIAL_REQUESTS, MOCK_NOTIFICATIONS, CLASSROOMS } from './constants/mockData';
 import type { SystemNotification, BookingRequest } from './types';
 import { Bell, Menu, Sparkles, ChevronRight, ShieldCheck } from 'lucide-react';
+import { api } from './services/api';
 
 function MainApp() {
   const { user } = useAuth();
@@ -56,12 +57,38 @@ function MainApp() {
   const [notifications, setNotifications] = useState<SystemNotification[]>(MOCK_NOTIFICATIONS);
   const [rooms, setRooms] = useState(CLASSROOMS);
 
+  // Fetch bookings from backend initially and poll every 3 seconds for updates
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const backendRequests = await api.getBookings();
+        setRequests((prev) => {
+          const isSame = JSON.stringify(prev) === JSON.stringify(backendRequests);
+          return isSame ? prev : backendRequests;
+        });
+      } catch (err) {
+        console.error("Failed to fetch bookings from backend:", err);
+      }
+    };
+
+    fetchRequests();
+    const interval = setInterval(fetchRequests, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (!user) {
     return <LoginScreen />;
   }
 
   // State modifiers
-  const handleAddRequest = (newReq: BookingRequest) => {
+  const handleAddRequest = async (newReq: BookingRequest) => {
+    try {
+      await api.createBookingRequest(newReq);
+    } catch (err) {
+      console.error("Failed to save booking request:", err);
+      showToast("Backend connection issue, request saved locally only.", "warning");
+    }
+
     setRequests((prev) => [newReq, ...prev]);
 
     // Create a mock pending notification
@@ -76,11 +103,22 @@ function MainApp() {
     setNotifications((prev) => [newNotif, ...prev]);
   };
 
-  const handleCancelRequest = (id: string) => {
+  const handleCancelRequest = async (id: string) => {
+    try {
+      await api.updateBookingStatus(id, 'rejected');
+    } catch (err) {
+      console.error("Failed to cancel request on backend:", err);
+    }
     setRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const handleApproveRequest = (id: string) => {
+  const handleApproveRequest = async (id: string) => {
+    try {
+      await api.updateBookingStatus(id, 'approved');
+    } catch (err) {
+      console.error("Failed to approve request on backend:", err);
+    }
+
     setRequests((prev) =>
       prev.map((r) => {
         if (r.id === id) {
@@ -100,7 +138,13 @@ function MainApp() {
     );
   };
 
-  const handleRejectRequest = (id: string) => {
+  const handleRejectRequest = async (id: string) => {
+    try {
+      await api.updateBookingStatus(id, 'rejected');
+    } catch (err) {
+      console.error("Failed to reject request on backend:", err);
+    }
+
     setRequests((prev) =>
       prev.map((r) => {
         if (r.id === id) {

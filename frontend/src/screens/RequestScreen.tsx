@@ -6,7 +6,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Dropdown } from '../components/Dropdown';
-import { Sparkles, Calendar, Clock, Users, Building, ShieldCheck, HeartHandshake, AlertCircle, Upload, Download, Search, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowRight, BookOpen } from 'lucide-react';
+import { Sparkles, Calendar, Clock, Users, Building, ShieldCheck, HeartHandshake, AlertCircle, Upload, Download, Search, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowRight, BookOpen, FileCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
 
@@ -286,6 +286,56 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
     } finally {
       setUploadLoading(false);
     }
+  };
+
+  const handleSubmitBulkRequest = () => {
+    if (!allotmentResults) return;
+
+    const sessionStr = `${allotmentResults.start_date} (${allotmentResults.start_session})`;
+    const endSessionStr = allotmentResults.end_date !== allotmentResults.start_date || allotmentResults.end_session !== allotmentResults.start_session 
+      ? ` to ${allotmentResults.end_date} (${allotmentResults.end_session})` 
+      : '';
+
+    const newRequest = {
+      id: `req-${Math.random().toString(36).substr(2, 9)}`,
+      staffId: user?.id || 'usr-3',
+      staffName: user?.name || 'Prof. Amit Sharma',
+      subject: `Bulk Allotment - ${allotmentResults.summary.total_students} Students`,
+      date: `${sessionStr}${endSessionStr}`,
+      time: allotmentResults.start_session === 'FN' ? '09:00' : '13:30',
+      duration: 3.5,
+      strength: allotmentResults.summary.total_students,
+      facilities: [...bulkFnFacilities, ...bulkAnFacilities],
+      remarks: allotmentResults.remarks || bulkRemarks || 'Bulk allocation generated from Excel upload.',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      isBulkAllotment: true,
+      bulkDetails: {
+        sessionId: allotmentResults.session_id,
+        summary: allotmentResults.summary,
+        studentsCount: allotmentResults.students.length,
+        uniqueLabsCount: allotmentResults.summary.unique_labs_count,
+        uniqueVenuesCount: allotmentResults.summary.unique_venues_count,
+        students: allotmentResults.students,
+        startDate: allotmentResults.start_date,
+        startSession: allotmentResults.start_session,
+        endDate: allotmentResults.end_date,
+        endSession: allotmentResults.end_session,
+        fnFacilities: bulkFnFacilities,
+        anFacilities: bulkAnFacilities
+      }
+    };
+
+    onAddRequest(newRequest);
+
+    // Confetti!
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+
+    showToast('Bulk classroom booking request submitted to admin successfully!', 'success');
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -881,14 +931,24 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
                       </p>
                     </div>
                   </div>
-                  <a
-                    href={api.downloadAllotmentUrl(allotmentResults.session_id)}
-                    download="Venue Mapping.xlsx"
-                    className="w-full md:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow transition-all duration-200 flex items-center justify-center gap-1.5 text-xs select-none"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download Venue Mapping.xlsx
-                  </a>
+                  <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
+                    <a
+                      href={api.downloadAllotmentUrl(allotmentResults.session_id)}
+                      download="Venue Mapping.xlsx"
+                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5 text-xs select-none border border-slate-200 dark:border-slate-750"
+                    >
+                      <Download className="w-4 h-4 text-slate-500" />
+                      Download Excel
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleSubmitBulkRequest}
+                      className="px-4 py-2.5 bg-emerald-550 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-1.5 text-xs select-none cursor-pointer border-none"
+                    >
+                      <FileCheck className="w-4.5 h-4.5" />
+                      Submit Allocation Request
+                    </button>
+                  </div>
                 </div>
 
                 {/* Distributions Section */}
