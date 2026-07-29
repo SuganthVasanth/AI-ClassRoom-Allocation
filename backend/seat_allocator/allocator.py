@@ -66,26 +66,28 @@ class SeatAllocator:
                 dis_idx += 1
                 
         if dis_idx < len(disabled_students):
-            logger.warning(f"Could not fit all accessibility students in Row 1. Remaining: {len(disabled_students) - dis_idx}")
-            # Try row 2 for remaining accessibility students
-            for c in range(1, num_cols + 1):
+            logger.warning(f"Could not fit all accessibility students in Row 1 & 2. Placing remaining in earliest available rows...")
+            for r in range(2, num_rows + 1):
                 if dis_idx >= len(disabled_students):
                     break
-                if (2, c) in broken_seats or (2, c) in grid:
-                    continue
-                student = disabled_students[dis_idx]
-                grid[(2, c)] = student
-                seat_num = f"{get_row_letter(2)}{c}"
-                allocated_list.append({
-                    'student_id': student['student_id'],
-                    'roll_number': student['roll_number'],
-                    'department': student['department'],
-                    'seat_number': seat_num,
-                    'row_num': 2,
-                    'col_num': c,
-                    'is_accessibility': 1
-                })
-                dis_idx += 1
+                for c in range(1, num_cols + 1):
+                    if dis_idx >= len(disabled_students):
+                        break
+                    if (r, c) in broken_seats or (r, c) in grid:
+                        continue
+                    student = disabled_students[dis_idx]
+                    grid[(r, c)] = student
+                    seat_num = f"{get_row_letter(r)}{c}"
+                    allocated_list.append({
+                        'student_id': student['student_id'],
+                        'roll_number': student['roll_number'],
+                        'department': student['department'],
+                        'seat_number': seat_num,
+                        'row_num': r,
+                        'col_num': c,
+                        'is_accessibility': 1
+                    })
+                    dis_idx += 1
 
         # Pass 2: Place normal students in remaining seats using neighbor checks for department mixing
         for r in range(1, num_rows + 1):
@@ -95,8 +97,6 @@ class SeatAllocator:
                     continue
                     
                 # Check neighbors to avoid adjacent same department
-                # Neighbor left: (r, c-1)
-                # Neighbor top: (r-1, c)
                 left_dept = grid.get((r, c-1), {}).get('department')
                 top_dept = grid.get((r-1, c), {}).get('department')
                 
@@ -148,7 +148,7 @@ class SeatAllocator:
             chart.append(row_cells)
             
         # 5. Save to database
-        save_seat_allocation_to_db(allocation_id, allocated_list, db_path="data/campus_scheduler.db")
+        save_seat_allocation_to_db(allocation_id, allocated_list, conn=self.conn)
         
         return {
             'allocation_id': allocation_id,

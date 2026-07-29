@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -22,10 +22,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
     
-    // Auto-remove after 4 seconds
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 4500);
   }, []);
 
   const removeToast = (id: string) => {
@@ -33,37 +32,38 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-emerald-500" />,
+    success: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
     error: <AlertCircle className="w-5 h-5 text-rose-500" />,
-    info: <Info className="w-5 h-5 text-blue-500" />,
-    warning: <AlertCircle className="w-5 h-5 text-amber-500" />
+    info: <Info className="w-5 h-5 text-indigo-500" />,
+    warning: <AlertTriangle className="w-5 h-5 text-amber-500" />
   };
 
-  const borders = {
-    success: 'border-emerald-500 dark:border-emerald-600',
-    error: 'border-rose-500 dark:border-rose-600',
-    info: 'border-blue-500 dark:border-blue-600',
-    warning: 'border-amber-500 dark:border-amber-600'
+  const borderGradients = {
+    success: 'border-l-emerald-500',
+    error: 'border-l-rose-500',
+    info: 'border-l-indigo-500',
+    warning: 'border-l-amber-500'
   };
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
       
-      {/* Toast Container */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+      {/* Toast Notification Container */}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`w-full flex items-start gap-3 p-4 bg-white dark:bg-slate-800 border-l-4 rounded-r-xl shadow-lg ring-1 ring-slate-100 dark:ring-slate-800 pointer-events-auto animate-slide-up ${borders[toast.type]}`}
+            className={`w-full flex items-start gap-3 p-4 glass-card bg-white/95 dark:bg-slate-900/95 border-l-4 ${borderGradients[toast.type]} rounded-2xl shadow-2xl pointer-events-auto animate-slide-up`}
           >
             <div className="flex-shrink-0 mt-0.5">{icons[toast.type]}</div>
-            <div className="flex-grow text-sm font-medium text-slate-700 dark:text-slate-200">
+            <div className="flex-grow text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100">
               {toast.message}
             </div>
             <button
+              type="button"
               onClick={() => removeToast(toast.id)}
-              className="flex-shrink-0 text-slate-400 hover:text-slate-650 dark:hover:text-slate-300 transition-colors"
+              className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-0.5"
             >
               <X className="w-4 h-4" />
             </button>

@@ -3,10 +3,11 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Dropdown } from '../components/Dropdown';
+import { VenueDetailModal } from '../components/VenueDetailModal';
 import { useToast } from '../components/Toast';
 import { DEPARTMENTS, BUILDINGS, CLASSROOMS } from '../constants/mockData';
 import { MOCK_USERS } from '../contexts/AuthContext';
-import { Landmark, School, Building, Users, Sliders, Check, Plus, Trash2, ShieldAlert } from 'lucide-react';
+import { Landmark, School, Building, Users, Sliders, Check, Plus, Trash2, ShieldAlert, Search, X } from 'lucide-react';
 import { api } from '../services/api';
 
 interface SuperAdminScreensProps {
@@ -181,16 +182,79 @@ export const SuperAdminScreens: React.FC<SuperAdminScreensProps> = ({ subTab }) 
     </Card>
   );
 
+  // Classroom search & filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [blockFilter, setBlockFilter] = useState('ALL');
+  const [selectedVenue, setSelectedVenue] = useState<any | null>(null);
+
+  // Filter classrooms based on real-time search
+  const filteredClassrooms = CLASSROOMS.filter((room) => {
+    const term = searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      !term ||
+      room.name.toLowerCase().includes(term) ||
+      room.buildingName.toLowerCase().includes(term) ||
+      room.category.toLowerCase().includes(term) ||
+      room.status.toLowerCase().includes(term) ||
+      room.capacity.toString().includes(term) ||
+      room.equipment.some((eq) => eq.toLowerCase().includes(term));
+
+    const matchesBlock = blockFilter === 'ALL' || room.buildingName === blockFilter;
+    return matchesSearch && matchesBlock;
+  });
+
   // Render Classrooms Screen
   const renderClassrooms = () => (
     <Card header={
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-bold text-slate-705 dark:text-slate-350">Active Classrooms List</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Active Classrooms & Laboratories</h3>
+          <p className="text-[11px] text-slate-400">Click any classroom row to open interactive detailed specs & QR code</p>
+        </div>
         <Button variant="accent" size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => showToast('Form to add classroom opened (Simulated)', 'info')}>
           Add Room
         </Button>
       </div>
     }>
+      {/* Powerful Real-time Search & Filter Bar */}
+      <div className="mb-4 flex flex-col sm:flex-row gap-2.5 items-center justify-between bg-slate-50/80 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/80">
+        <div className="relative flex-1 w-full">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search venue name, block, category, status, equipment (e.g. ME002, Projector, Lab)..."
+            className="w-full pl-10 pr-9 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all shadow-xs"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <select
+            value={blockFilter}
+            onChange={(e) => setBlockFilter(e.target.value)}
+            className="px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="ALL">All Blocks ({CLASSROOMS.length})</option>
+            {BUILDINGS.map((b) => (
+              <option key={b.id} value={b.name}>{b.name}</option>
+            ))}
+          </select>
+
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-primary border border-indigo-100 dark:border-indigo-900/40 whitespace-nowrap">
+            {filteredClassrooms.length} Venues
+          </span>
+        </div>
+      </div>
+
       <div className="overflow-x-auto text-left">
         <table className="w-full border-collapse">
           <thead>
@@ -204,27 +268,41 @@ export const SuperAdminScreens: React.FC<SuperAdminScreensProps> = ({ subTab }) 
             </tr>
           </thead>
           <tbody>
-            {CLASSROOMS.map((room) => (
-              <tr key={room.id} className="border-b border-slate-100/50 dark:border-slate-800/40 text-xs sm:text-sm text-slate-655 dark:text-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
-                <td className="py-3 pl-2 font-bold text-slate-800 dark:text-slate-100">{room.name.split(' (')[0]}</td>
-                <td className="py-3 font-semibold text-slate-500">{room.buildingName}</td>
-                <td className="py-3 text-xs">{room.category}</td>
-                <td className="py-3 text-center font-bold text-primary">{room.capacity} Pax</td>
-                <td className="py-3 text-center">
-                  <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border
-                    ${room.status === 'available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20' : ''}
-                    ${room.status === 'occupied' ? 'bg-blue-50 text-primary border-blue-100 dark:bg-blue-950/20' : ''}
-                    ${room.status === 'maintenance' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20' : ''}
-                    ${room.status === 'reserved' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20' : ''}
-                  `}>
-                    {room.status.toUpperCase()}
-                  </span>
-                </td>
-                <td className="py-3 text-right pr-2 text-[10px] text-slate-450 truncate max-w-[150px]">
-                  {room.equipment.join(', ')}
+            {filteredClassrooms.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-8 text-center text-xs text-slate-400">
+                  No venues found matching "{searchTerm}". Try clearing search filter.
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredClassrooms.map((room) => (
+                <tr
+                  key={room.id}
+                  onClick={() => setSelectedVenue(room)}
+                  className="border-b border-slate-100/50 dark:border-slate-800/40 text-xs sm:text-sm text-slate-655 dark:text-slate-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all cursor-pointer group"
+                >
+                  <td className="py-3 pl-2 font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors flex items-center gap-1.5">
+                    <span>{room.name.split(' (')[0]}</span>
+                  </td>
+                  <td className="py-3 font-semibold text-slate-500">{room.buildingName}</td>
+                  <td className="py-3 text-xs">{room.category}</td>
+                  <td className="py-3 text-center font-bold text-primary">{room.capacity} Pax</td>
+                  <td className="py-3 text-center">
+                    <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border
+                      ${room.status === 'available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20' : ''}
+                      ${room.status === 'occupied' ? 'bg-blue-50 text-primary border-blue-100 dark:bg-blue-950/20' : ''}
+                      ${room.status === 'maintenance' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20' : ''}
+                      ${room.status === 'reserved' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20' : ''}
+                    `}>
+                      {room.status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="py-3 text-right pr-2 text-[10px] text-slate-450 truncate max-w-[150px]">
+                    {room.equipment.join(', ')}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -470,6 +548,15 @@ export const SuperAdminScreens: React.FC<SuperAdminScreensProps> = ({ subTab }) 
       {subTab === 'classrooms' && renderClassrooms()}
       {subTab === 'users' && renderUsers()}
       {subTab === 'ai_settings' && renderAISettings()}
+
+      <VenueDetailModal
+        venue={selectedVenue}
+        isOpen={!!selectedVenue}
+        onClose={() => setSelectedVenue(null)}
+        onToggleMaintenance={(venueId) => {
+          showToast(`Toggled maintenance mode for ${selectedVenue?.name.split(' (')[0]}`, 'info');
+        }}
+      />
     </div>
   );
 };

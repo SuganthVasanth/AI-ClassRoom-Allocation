@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { AuthProvider, useAuth, type UserRole } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './components/Toast';
 
 // Screens imports
@@ -22,7 +22,7 @@ import { AvailabilityScreen } from './screens/AvailabilityScreen';
 // Constants imports
 import { INITIAL_REQUESTS, MOCK_NOTIFICATIONS, CLASSROOMS } from './constants/mockData';
 import type { SystemNotification, BookingRequest } from './types';
-import { Bell, Menu, User, ShieldAlert, Sparkles, MessageSquare } from 'lucide-react';
+import { Bell, Menu, Sparkles, ChevronRight, ShieldCheck } from 'lucide-react';
 
 function MainApp() {
   const { user } = useAuth();
@@ -31,6 +31,7 @@ function MainApp() {
 
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Synchronize component state with URL hash routing
   useEffect(() => {
@@ -47,6 +48,7 @@ function MainApp() {
 
   const handleTabChange = (tab: string) => {
     window.location.hash = `#/${tab}`;
+    setIsMobileOpen(false);
   };
 
   // Global Mock States
@@ -82,7 +84,6 @@ function MainApp() {
     setRequests((prev) =>
       prev.map((r) => {
         if (r.id === id) {
-          // Success notification
           const newNotif: SystemNotification = {
             id: `notif-${Math.random().toString(36).substr(2, 9)}`,
             title: 'Request Approved!',
@@ -125,7 +126,6 @@ function MainApp() {
         if (r.id === roomId) {
           const nextStatus = r.status === 'maintenance' ? 'available' : 'maintenance';
           
-          // Create logs notification
           const newNotif: SystemNotification = {
             id: `notif-${Math.random().toString(36).substr(2, 9)}`,
             title: 'Classroom Status Change',
@@ -158,7 +158,6 @@ function MainApp() {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
-  // Helper autofill for AI assistant request draft
   const handleAutoDraft = (bldId: string, str: number, sub: string) => {
     handleTabChange('request');
     showToast('AI smart parameters copied to form! Form draft ready.', 'success');
@@ -166,101 +165,111 @@ function MainApp() {
 
   const unreadNotifCount = notifications.filter((n) => !n.read).length;
 
-  // Breadcrumbs calculation
   const getBreadcrumbs = () => {
-    const parent = user.role.replace('_', ' ').toUpperCase() + ' WORKSPACE';
+    const parent = user.role.replace('_', ' ').toUpperCase();
     const sub = currentTab.replace('_', ' ').toUpperCase();
-    return `${parent} / ${sub}`;
+    return { parent, sub };
   };
 
+  const breadcrumbs = getBreadcrumbs();
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-200 flex">
-      {/* Sidebar Layout */}
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f19] text-slate-800 dark:text-slate-200 transition-colors duration-200 flex font-sans">
+      {/* Responsive Collapsible Sidebar */}
       <Sidebar
         currentTab={currentTab}
         onChangeTab={handleTabChange}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isMobileOpen={isMobileOpen}
+        onCloseMobile={() => setIsMobileOpen(false)}
       />
 
-      {/* Main Body Shell */}
+      {/* Main Body Content Shell */}
       <main
         className={`flex-1 min-w-0 min-h-screen flex flex-col transition-all duration-300
           ${isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64'}
         `}
       >
-        {/* Top Navigation Bar */}
-        <header className="sticky top-0 z-20 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center justify-between shadow-sm">
-          {/* Breadcrumb / Menu triggers */}
-          <div className="flex items-center gap-3">
+        {/* Glassmorphic Top Header Bar */}
+        <header className="sticky top-0 z-30 w-full glass-header bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-xs">
+          {/* Menu Trigger & Breadcrumbs */}
+          <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              type="button"
+              onClick={() => setIsMobileOpen(true)}
+              className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
+              title="Open Navigation"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 select-none tracking-wider">
-              {getBreadcrumbs()}
-            </span>
+
+            <div className="flex items-center gap-2 truncate text-xs font-semibold text-slate-400 dark:text-slate-500 select-none">
+              <span className="hidden sm:inline font-bold text-slate-600 dark:text-slate-400">{breadcrumbs.parent}</span>
+              <ChevronRight className="w-3.5 h-3.5 hidden sm:inline text-slate-300 dark:text-slate-600" />
+              <span className="gradient-text font-extrabold uppercase tracking-wide truncate">{breadcrumbs.sub}</span>
+            </div>
           </div>
 
-          {/* Right Header items */}
-          <div className="flex items-center gap-4">
-            
-            {/* AI Assistant Quick Indicator (Staff/Student only) */}
+          {/* Header Action Buttons & User Badge */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* AI Assistant Button */}
             {(user.role === 'staff' || user.role === 'student') && (
               <button
+                type="button"
                 onClick={() => handleTabChange('ai')}
-                className="p-2 bg-slate-50 hover:bg-slate-105 dark:bg-slate-800 text-slate-650 dark:text-slate-350 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:border-primary/50 dark:hover:border-primary/50 transition-all flex items-center gap-1.5 text-xs font-bold animate-pulse"
-                title="Consult AI assistant"
+                className="px-3 py-1.5 bg-gradient-to-r from-amber-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 text-indigo-600 dark:text-indigo-300 rounded-xl border border-indigo-200/60 dark:border-indigo-800/60 transition-all flex items-center gap-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                title="Consult AI Assistant"
               >
-                <Sparkles className="w-4 h-4 text-yellow-500" />
-                <span className="hidden sm:inline">Consult AI</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span className="hidden sm:inline">AI Assistant</span>
               </button>
             )}
 
-            {/* Notifications Alert Bell */}
+            {/* Notification Bell */}
             <button
+              type="button"
               onClick={() => handleTabChange('notifications')}
-              className="relative p-2 bg-slate-50 hover:bg-slate-105 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl transition-all"
+              className="relative p-2.5 bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all shadow-xs cursor-pointer"
+              title="Notifications"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4" />
               {unreadNotifCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900 animate-bounce">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900 animate-pulse">
                   {unreadNotifCount}
                 </span>
               )}
             </button>
 
-            {/* User Visual Badge */}
+            {/* User Profile Capsule */}
             <div 
               onClick={() => handleTabChange('profile')}
-              className="flex items-center gap-2 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 rounded-xl py-1 px-2.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors select-none"
+              className="flex items-center gap-2 border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-800/90 rounded-xl py-1.5 px-2.5 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 transition-all shadow-xs select-none"
             >
               <img
                 src={user.avatarUrl}
                 alt={user.name}
-                className="w-6 h-6 rounded-lg object-cover"
+                className="w-6 h-6 rounded-lg object-cover ring-1 ring-indigo-500/30"
               />
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-350 hidden md:inline truncate max-w-[100px]">
+              <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 hidden md:inline truncate max-w-[110px]">
                 {user.name.split(' ')[0]}
               </span>
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 hidden sm:inline" />
             </div>
-
           </div>
         </header>
 
-        {/* Scrollable Content Pane */}
-        <div className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
+        {/* Scrollable Container Page Content */}
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl w-full mx-auto animate-fade-in">
           
-          {/* Super Admin specific menus router */}
+          {/* Super Admin Routing */}
           {user.role === 'super_admin' && [
             'institution', 'departments', 'buildings', 'classrooms', 'users', 'ai_settings'
           ].includes(currentTab) && (
             <SuperAdminScreens subTab={currentTab} />
           )}
 
-          {/* Admin specific menus router */}
+          {/* Admin Routing */}
           {user.role === 'admin' && [
             'approvals', 'maintenance', 'exams'
           ].includes(currentTab) && (
@@ -273,7 +282,7 @@ function MainApp() {
             />
           )}
 
-          {/* Global Screens Switcher */}
+          {/* Global Tab Routers */}
           {currentTab === 'dashboard' && (
             <Dashboard
               requests={requests}

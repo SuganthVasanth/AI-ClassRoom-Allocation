@@ -20,6 +20,9 @@ def check_time_overlap(s1, e1, s2, e2):
     m_s2 = parse_time_to_minutes(s2)
     m_e2 = parse_time_to_minutes(e2)
     
+    if m_e1 <= m_s1 or m_e2 <= m_s2:
+        return False
+        
     # Overlap condition: S1 < E2 and S2 < E1
     return m_s1 < m_e2 and m_s2 < m_e1
 
@@ -43,7 +46,7 @@ class RuleEngine:
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT start_time, end_time FROM timetable 
-            WHERE venue_name = ? AND day_of_week = ?
+            WHERE venue_name = ? AND LOWER(day_of_week) = LOWER(?)
         """, (venue_name, day_of_week))
         
         rows = cursor.fetchall()
@@ -57,7 +60,7 @@ class RuleEngine:
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT start_time, end_time FROM bookings 
-            WHERE venue_name = ? AND date = ? AND status = 'Approved'
+            WHERE venue_name = ? AND date = ? AND LOWER(status) IN ('approved', 'pending')
         """, (venue_name, date_str))
         
         rows = cursor.fetchall()
@@ -68,7 +71,7 @@ class RuleEngine:
         # Also check allocation_history for the date
         cursor.execute("""
             SELECT start_time, end_time FROM allocation_history 
-            WHERE venue_name = ? AND date = ? AND status = 'Approved'
+            WHERE venue_name = ? AND date = ? AND LOWER(status) IN ('approved', 'pending')
         """, (venue_name, date_str))
         
         rows = cursor.fetchall()

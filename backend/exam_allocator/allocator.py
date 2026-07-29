@@ -30,24 +30,34 @@ class ExamHallAllocator:
             'TEXTILE': ('TX', 101)
         }
         
-        student_pool = [] # list of dicts: {'student_id': str, 'roll_number': str, 'department': str}
-        
+        dept_students_map = {}
         for dept, count in cohort_counts.items():
             prefix, start_idx = dept_prefixes.get(dept, (dept[:2].upper(), 101))
+            dept_students_map[dept] = []
             for i in range(count):
                 roll_num = f"{prefix}{start_idx + i}"
-                student_pool.append({
+                dept_students_map[dept].append({
                     'student_id': f"BIT_EX_{dept}_{start_idx + i}",
                     'roll_number': roll_num,
                     'department': dept,
-                    'is_disabled': 0 # default, can be custom mapped
+                    'is_disabled': 0
                 })
+                
+        # Round-robin interleaving across departments for anti-cheating exam seating
+        student_pool = []
+        max_dept_count = max([len(v) for v in dept_students_map.values()]) if dept_students_map else 0
+        dept_keys = list(dept_students_map.keys())
+        
+        for idx in range(max_dept_count):
+            for d in dept_keys:
+                if idx < len(dept_students_map[d]):
+                    student_pool.append(dept_students_map[d][idx])
                 
         total_students = len(student_pool)
         if total_students == 0:
             return {"error": "No students to allocate"}
 
-        # 2. Get available rooms (venues with venue_type = 'Classroom' or capacity >= 40)
+        # 2. Get available rooms (venues with venue_type = 'Classroom' or capacity >= 30)
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT venue_name, capacity FROM venues 
@@ -57,7 +67,6 @@ class ExamHallAllocator:
         available_rooms = [dict(row) for row in cursor.fetchall()]
         
         if not available_rooms:
-            # Try any venue if classrooms are empty
             cursor.execute("SELECT venue_name, capacity FROM venues WHERE status = 'Active' ORDER BY capacity DESC")
             available_rooms = [dict(row) for row in cursor.fetchall()]
             
@@ -82,7 +91,6 @@ class ExamHallAllocator:
                 continue
                 
             # Summarize the department ranges in this room
-            # e.g., CS101-CS150
             dept_segments = {}
             for s in room_students:
                 dept = s['department']
@@ -93,7 +101,6 @@ class ExamHallAllocator:
                 
             summarized_ranges = []
             for dept, rolls in dept_segments.items():
-                # Sort rolls by number part
                 rolls_sorted = sorted(rolls, key=lambda r: int(''.join(filter(str.isdigit, r))))
                 start_roll = rolls_sorted[0]
                 end_roll = rolls_sorted[-1]
@@ -118,7 +125,7 @@ class ExamHallAllocator:
             }
             
             # Save allocation to history
-            save_allocation_to_db(alloc_record, db_path="data/campus_scheduler.db")
+            save_allocation_to_db(alloc_record, conn=self.conn)
             
             allocations.append({
                 'allocation_id': alloc_id,

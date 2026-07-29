@@ -169,7 +169,7 @@ class OptimizationEngine:
             'is_peak_hour': is_peak
         }
         
-        save_allocation_to_db(alloc_record, db_path="data/campus_scheduler.db")
+        save_allocation_to_db(alloc_record, conn=self.conn)
         logger.info(f"Room allocated successfully: {allocated_room['venue_name']} with cost {best_candidate['cost']}")
         
         # Return summary

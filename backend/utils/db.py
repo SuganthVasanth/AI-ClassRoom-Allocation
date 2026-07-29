@@ -207,8 +207,12 @@ def get_allocation_history_count(db_path=DEFAULT_DB_PATH):
     conn.close()
     return count
 
-def save_allocation_to_db(alloc, db_path=DEFAULT_DB_PATH):
-    conn = get_connection(db_path)
+def save_allocation_to_db(alloc, db_path=DEFAULT_DB_PATH, conn=None):
+    should_close = False
+    if conn is None:
+        conn = get_connection(db_path)
+        should_close = True
+    
     cursor = conn.cursor()
     
     # Save to allocation_history
@@ -223,10 +227,15 @@ def save_allocation_to_db(alloc, db_path=DEFAULT_DB_PATH):
     ))
     
     conn.commit()
-    conn.close()
+    if should_close:
+        conn.close()
 
-def save_seat_allocation_to_db(alloc_id, seating_list, db_path=DEFAULT_DB_PATH):
-    conn = get_connection(db_path)
+def save_seat_allocation_to_db(alloc_id, seating_list, db_path=DEFAULT_DB_PATH, conn=None):
+    should_close = False
+    if conn is None:
+        conn = get_connection(db_path)
+        should_close = True
+        
     cursor = conn.cursor()
     
     # Delete old seat plans for this allocation
@@ -242,4 +251,6 @@ def save_seat_allocation_to_db(alloc_id, seating_list, db_path=DEFAULT_DB_PATH):
         ))
         
     conn.commit()
-    conn.close()
+    if should_close:
+        conn.close()
+

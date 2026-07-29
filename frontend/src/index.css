@@ -1,18 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
-  --color-primary: #2563EB;
-  --color-primary-hover: #1D4ED8;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --color-primary: #4F46E5;
+  --color-primary-hover: #4338CA;
   --color-accent: #10B981;
   --color-accent-hover: #059669;
   
-  --animate-fade-in: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-scale-in: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-slide-up: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-fade-in: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-scale-in: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-up: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-down: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -22,13 +23,80 @@
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.97); }
+  from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Glassmorphism & Custom Styling Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 12px 30px -10px rgba(79, 70, 229, 0.12);
+}
+
+.dark .glass-card:hover {
+  border-color: rgba(129, 140, 248, 0.3);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.4);
+}
+
+.glass-dropdown {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.15);
+}
+
+.dark .glass-dropdown {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #2563EB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, #818CF8 0%, #C084FC 50%, #60A5FA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Custom Scrollbar Styles for Premium Feel */
@@ -47,7 +115,7 @@
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #334155;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -55,12 +123,19 @@
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #475569;
 }
 
 body {
   font-family: var(--font-sans);
   overflow-x: hidden;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.dark body {
+  background-color: #0b0f19;
+  color: #f8fafc;
 }
 
 #root {
@@ -68,3 +143,4 @@ body {
   display: flex;
   flex-direction: column;
 }
+

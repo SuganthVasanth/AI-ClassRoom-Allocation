@@ -75,6 +75,9 @@ class SeatingRequest(BaseModel):
 
 @app.post("/recommend-room")
 def recommend_room(request: RoomRequest):
+    if request.student_count <= 0:
+        raise HTTPException(status_code=400, detail="Student count must be greater than 0.")
+        
     conn = get_connection()
     try:
         opt_engine = OptimizationEngine(conn)
@@ -82,14 +85,14 @@ def recommend_room(request: RoomRequest):
         if not result:
             raise HTTPException(status_code=404, detail="No suitable room could be allocated satisfying the constraints.")
             
-        # Check if retraining is needed (1000 record threshold check)
-        # This will retrain the model asynchronously or synchronously if threshold met.
         try:
             trigger_retraining_if_needed(threshold=1000)
         except Exception as retrain_err:
             logger.error(f"Retraining check error: {retrain_err}")
             
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in recommend-room: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -98,6 +101,9 @@ def recommend_room(request: RoomRequest):
 
 @app.post("/allocate-exam")
 def allocate_exam(request: ExamRequest):
+    if not request.cohort_counts or sum(request.cohort_counts.values()) <= 0:
+        raise HTTPException(status_code=400, detail="Cohort counts must contain at least 1 student.")
+
     conn = get_connection()
     try:
         allocator = ExamHallAllocator(conn)
@@ -110,6 +116,8 @@ def allocate_exam(request: ExamRequest):
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in allocate-exam: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -120,7 +128,6 @@ def allocate_exam(request: ExamRequest):
 def generate_seat_plan(request: SeatingRequest):
     conn = get_connection()
     try:
-        # Convert broken seats from list of lists to list of tuples
         broken = []
         if request.broken_seats:
             broken = [tuple(seat) for seat in request.broken_seats]
@@ -136,6 +143,8 @@ def generate_seat_plan(request: SeatingRequest):
             num_cols=request.num_cols
         )
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in generate-seat-plan: {e}")
         raise HTTPException(status_code=500, detail=str(e))
