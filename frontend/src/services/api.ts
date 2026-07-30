@@ -107,6 +107,11 @@ export const api = {
       method: 'GET',
     }),
 
+  getVenueTypes: () =>
+    request<{ types: { value: string; label: string; count: number }[] }>('/venue-types', {
+      method: 'GET',
+    }),
+
   uploadStudentExcel: async (
     file: File,
     startDate: string,
@@ -115,7 +120,10 @@ export const api = {
     endSession?: string,
     fnFacilities?: string[],
     anFacilities?: string[],
-    remarks?: string
+    fnVenueType?: string,
+    anVenueType?: string,
+    remarks?: string,
+    sameAsFn?: boolean
   ): Promise<any> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -133,8 +141,17 @@ export const api = {
     if (anFacilities && anFacilities.length > 0) {
       formData.append('an_facilities', anFacilities.join(','));
     }
+    if (fnVenueType) {
+      formData.append('fn_venue_type', fnVenueType);
+    }
+    if (anVenueType) {
+      formData.append('an_venue_type', anVenueType);
+    }
     if (remarks) {
       formData.append('remarks', remarks);
+    }
+    if (sameAsFn !== undefined) {
+      formData.append('same_as_fn', String(sameAsFn));
     }
 
     const response = await fetch(`${API_BASE_URL}/upload-venue-mapping`, {
@@ -179,5 +196,33 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ status }),
     }),
+
+  uploadToGoogleSheets: async (sessionId: string, accessToken: string): Promise<{
+    spreadsheet_id: string;
+    spreadsheet_url: string;
+    title: string;
+    rows_written: number;
+  }> => {
+    const url = `${API_BASE_URL}/upload-to-sheets/${encodeURIComponent(sessionId)}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const parsed = JSON.parse(errorText);
+        errorMessage = parsed.detail || errorMessage;
+      } catch {
+        if (errorText) errorMessage = errorText;
+      }
+      throw new Error(errorMessage);
+    }
+    return response.json();
+  },
 };
 

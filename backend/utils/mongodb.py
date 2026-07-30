@@ -31,8 +31,8 @@ def get_mongo_client():
             # Initialize MongoClient with connection pooling and time-out limits
             _mongo_client = MongoClient(
                 MONGO_URI,
-                serverSelectionTimeoutMS=2000,  # 2 seconds timeout for fast checks
-                connectTimeoutMS=2000,
+                serverSelectionTimeoutMS=8000,  # 8s for Atlas cloud (higher latency than localhost)
+                connectTimeoutMS=8000,
                 maxPoolSize=50                    # Connection pooling limit
             )
         except Exception as e:

@@ -7,7 +7,8 @@ import {
   Calendar, Search, MapPin, CheckCircle2, Clock, Trash2, XCircle,
   Download, RefreshCw, History, ChevronDown, ChevronUp,
   Building2, Users, Sparkles, AlertCircle, BookOpen, Filter,
-  Award, Hash, Layers, Timer, Tag, FileCheck, Info, LayoutGrid
+  Award, Hash, Layers, Timer, Tag, FileCheck, Info, LayoutGrid,
+  ExternalLink, Loader2
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -31,6 +32,7 @@ export const BookingHistoryScreen: React.FC<BookingHistoryProps> = ({
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [sheetsLoading, setSheetsLoading] = useState<Record<string, boolean>>({});
 
   if (!user) return null;
 
@@ -62,6 +64,48 @@ export const BookingHistoryScreen: React.FC<BookingHistoryProps> = ({
     } else {
       showToast('Action not allowed in preview.', 'warning');
     }
+  };
+
+  const handleAddToGoogleSheets = (sessionId: string, label: string) => {
+    const google = (window as any).google;
+    if (!google?.accounts?.oauth2) {
+      showToast('Google Identity Services not loaded. Please refresh the page.', 'error');
+      return;
+    }
+
+    setSheetsLoading((prev) => ({ ...prev, [sessionId]: true }));
+
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+      scope: [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive.file',
+      ].join(' '),
+      callback: async (tokenResponse: any) => {
+        if (tokenResponse.error) {
+          showToast(`Google authorisation failed: ${tokenResponse.error}`, 'error');
+          setSheetsLoading((prev) => ({ ...prev, [sessionId]: false }));
+          return;
+        }
+        try {
+          const result = await api.uploadToGoogleSheets(sessionId, tokenResponse.access_token);
+          showToast(`Exported to Google Sheets! Opening now…`, 'success');
+          window.open(result.spreadsheet_url, '_blank', 'noopener,noreferrer');
+        } catch (err: any) {
+          showToast(`Failed to export: ${err.message || 'Unknown error'}`, 'error');
+        } finally {
+          setSheetsLoading((prev) => ({ ...prev, [sessionId]: false }));
+        }
+      },
+      error_callback: (err: any) => {
+        if (err?.type !== 'popup_closed') {
+          showToast(`Google sign-in error: ${err?.type || 'unknown'}`, 'error');
+        }
+        setSheetsLoading((prev) => ({ ...prev, [sessionId]: false }));
+      },
+    });
+
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   };
 
   const filteredRequests = myRequests.filter((r) => {
@@ -516,14 +560,54 @@ export const BookingHistoryScreen: React.FC<BookingHistoryProps> = ({
                           )}
                         </div>
 
-                        <a
-                          href={api.downloadAllotmentUrl(req.bulkDetails.sessionId)}
-                          download="Requested_Venue_Mapping.xlsx"
-                          className="inline-flex items-center gap-2 text-xs font-extrabold text-white bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 px-3 py-2 rounded-xl transition-all self-start shadow-sm shadow-emerald-500/20"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          Download Allotment Plan (Excel)
-                        </a>
+                        {/* Action buttons row */}
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {/* Download Excel */}
+                          <a
+                            href={api.downloadAllotmentUrl(req.bulkDetails.sessionId)}
+                            download="Requested_Venue_Mapping.xlsx"
+                            className="inline-flex items-center gap-2 text-xs font-extrabold text-white bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 px-3 py-2 rounded-xl transition-all self-start shadow-sm shadow-emerald-500/20"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download Allotment Plan (Excel)
+                          </a>
+
+                          {/* Add to Google Sheets */}
+                          <button
+                            id={`sheets-btn-${req.bulkDetails.sessionId}`}
+                            onClick={() => handleAddToGoogleSheets(
+                              req.bulkDetails.sessionId,
+                              req.subject || 'Allotment'
+                            )}
+                            disabled={sheetsLoading[req.bulkDetails.sessionId]}
+                            className="inline-flex items-center gap-2 text-xs font-extrabold text-white px-3 py-2 rounded-xl transition-all self-start shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                            style={{
+                              background: sheetsLoading[req.bulkDetails.sessionId]
+                                ? '#a0a0a0'
+                                : 'linear-gradient(135deg, #1FA463 0%, #34A853 100%)',
+                              boxShadow: sheetsLoading[req.bulkDetails.sessionId]
+                                ? 'none'
+                                : '0 2px 8px rgba(52,168,83,0.35)',
+                            }}
+                            title="Export this allotment to a new Google Sheet in your Drive"
+                          >
+                            {sheetsLoading[req.bulkDetails.sessionId] ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Exporting…
+                              </>
+                            ) : (
+                              <>
+                                {/* Google Sheets icon (inline SVG for brand accuracy) */}
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-1.5 15H6V6h12v12zm-9-9h2v1.5H9zm0 3h2v1.5H9zm0 3h2V16.5H9zm4.5-6H15V7.5h-1.5zm0 3H15v-1.5h-1.5zm0 3H15V16.5h-1.5z" />
+                                </svg>
+                                Add to Google Sheets
+                                <ExternalLink className="w-3 h-3 opacity-70" />
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     )}
 

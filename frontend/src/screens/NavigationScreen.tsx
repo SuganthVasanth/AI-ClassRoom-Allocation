@@ -100,7 +100,26 @@ export const NavigationScreen: React.FC = () => {
         }
       }
 
-      return nameMatch || blockMatch || typeMatch || isCseLabMatch;
+      // Special check for numbered labs: e.g., if user searches "IT Lab 5" and venue is "computer lab 5"
+      let isNumberedLabMatch = false;
+      if (q.includes('lab')) {
+        const queryNums = q.match(/\d+/);
+        if (queryNums) {
+          const queryNum = parseInt(queryNums[0], 10);
+          const nameLower = r.venue_name.toLowerCase();
+          if (nameLower.includes('lab') || nameLower.includes('laboratory') || r.venue_type.toLowerCase().includes('lab')) {
+            const venueNums = nameLower.match(/\d+/);
+            if (venueNums) {
+              const venueNum = parseInt(venueNums[0], 10);
+              if (queryNum === venueNum) {
+                isNumberedLabMatch = true;
+              }
+            }
+          }
+        }
+      }
+
+      return nameMatch || blockMatch || typeMatch || isCseLabMatch || isNumberedLabMatch;
     });
     setSearchResults(matches.slice(0, 5));
     setShowSearchDropdown(true);

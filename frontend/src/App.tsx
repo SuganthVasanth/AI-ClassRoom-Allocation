@@ -72,7 +72,7 @@ function MainApp() {
     };
 
     fetchRequests();
-    const interval = setInterval(fetchRequests, 3000);
+    const interval = setInterval(fetchRequests, 15000);
     return () => clearInterval(interval);
   }, []);
 

@@ -54,9 +54,27 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
   const [tablePage, setTablePage] = useState<number>(1);
   const [bulkFnFacilities, setBulkFnFacilities] = useState<string[]>([]);
   const [bulkAnFacilities, setBulkAnFacilities] = useState<string[]>([]);
+  const [venueTypes, setVenueTypes] = useState<{ value: string; label: string; count: number }[]>([]);
+  const [selectedFnVenueType, setSelectedFnVenueType] = useState<string>('Any');
+  const [selectedAnVenueType, setSelectedAnVenueType] = useState<string>('Any');
   const [bulkRemarks, setBulkRemarks] = useState('');
+  const [sameAsFn, setSameAsFn] = useState<boolean>(false);
 
   const facilityOptions = ['Projector', 'Wi-Fi', 'AC', 'Audio System', 'Smart Board', 'Computers'];
+
+  useEffect(() => {
+    const fetchVenueTypes = async () => {
+      try {
+        const data = await api.getVenueTypes();
+        if (data && data.types) {
+          setVenueTypes([{ value: 'Any', label: 'Any (No restriction)', count: 0 }, ...data.types]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch venue types:', err);
+      }
+    };
+    fetchVenueTypes();
+  }, []);
 
   const purposeOptions = [
     { value: 'Class', label: 'Class / Lecture' },
@@ -268,7 +286,10 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
         dateType === 'range' ? bulkEndSession : undefined,
         bulkFnFacilities,
         bulkAnFacilities,
-        bulkRemarks
+        selectedFnVenueType !== 'Any' ? selectedFnVenueType : undefined,
+        selectedAnVenueType !== 'Any' ? selectedAnVenueType : undefined,
+        bulkRemarks,
+        sameAsFn
       );
       
       setAllotmentResults(results);
@@ -322,7 +343,9 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
         endDate: allotmentResults.end_date,
         endSession: allotmentResults.end_session,
         fnFacilities: bulkFnFacilities,
-        anFacilities: bulkAnFacilities
+        anFacilities: bulkAnFacilities,
+        fnVenueType: selectedFnVenueType,
+        anVenueType: selectedAnVenueType
       }
     };
 
@@ -772,32 +795,106 @@ export const RequestScreen: React.FC<RequestScreenProps> = ({ onAddRequest }) =>
                 </div>
               </div>
 
-              {/* Required Facilities - Afternoon (AN) */}
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">
-                  Required Facilities - Afternoon (AN)
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {facilityOptions.map((fac) => {
-                    const isChecked = bulkAnFacilities.includes(fac);
-                    return (
-                      <button
-                        key={fac}
-                        type="button"
-                        onClick={() => handleBulkAnFacilityToggle(fac)}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold select-none transition-all
-                          ${isChecked
-                            ? 'bg-blue-50 dark:bg-primary/20 text-primary border-primary'
-                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-                          }
-                        `}
-                      >
-                        {fac}
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Same as FN checkbox */}
+              <div className="flex items-center gap-2.5 p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-850">
+                <input
+                  type="checkbox"
+                  id="same-as-fn"
+                  checked={sameAsFn}
+                  onChange={(e) => setSameAsFn(e.target.checked)}
+                  className="w-4 h-4 text-primary rounded border-slate-350 focus:ring-primary focus:ring-opacity-25"
+                />
+                <label htmlFor="same-as-fn" className="text-xs font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer">
+                  Same as FN (Allocate same venue for both sessions)
+                </label>
               </div>
+
+              {/* Required Facilities - Afternoon (AN) */}
+              {!sameAsFn && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+                    Required Facilities - Afternoon (AN)
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {facilityOptions.map((fac) => {
+                      const isChecked = bulkAnFacilities.includes(fac);
+                      return (
+                        <button
+                          key={fac}
+                          type="button"
+                          onClick={() => handleBulkAnFacilityToggle(fac)}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold select-none transition-all
+                            ${isChecked
+                              ? 'bg-blue-50 dark:bg-primary/20 text-primary border-primary'
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                            }
+                          `}
+                        >
+                          {fac}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Venue Type Selectors - Forenoon (FN) */}
+              {venueTypes.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+                    Required Venue Type - Forenoon (FN)
+                  </span>
+                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+                    {venueTypes.map((typeObj) => {
+                      const isSelected = selectedFnVenueType === typeObj.value;
+                      return (
+                        <button
+                          key={`fn-type-${typeObj.value}`}
+                          type="button"
+                          onClick={() => setSelectedFnVenueType(typeObj.value)}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold select-none transition-all duration-200 cursor-pointer
+                            ${isSelected
+                              ? 'bg-blue-500/10 text-primary border-primary shadow-sm shadow-primary/10'
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                            }
+                          `}
+                        >
+                          {typeObj.label} {typeObj.count > 0 ? `(${typeObj.count})` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Venue Type Selectors - Afternoon (AN) */}
+              {!sameAsFn && venueTypes.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+                    Required Venue Type - Afternoon (AN)
+                  </span>
+                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+                    {venueTypes.map((typeObj) => {
+                      const isSelected = selectedAnVenueType === typeObj.value;
+                      return (
+                        <button
+                          key={`an-type-${typeObj.value}`}
+                          type="button"
+                          onClick={() => setSelectedAnVenueType(typeObj.value)}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold select-none transition-all duration-200 cursor-pointer
+                            ${isSelected
+                              ? 'bg-blue-500/10 text-primary border-primary shadow-sm shadow-primary/10'
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                            }
+                          `}
+                        >
+                          {typeObj.label} {typeObj.count > 0 ? `(${typeObj.count})` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Remarks */}
               <div className="flex flex-col gap-1.5">

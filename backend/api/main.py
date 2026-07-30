@@ -2,7 +2,7 @@ import os
 import sqlite3
 import logging
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Form, Body
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Form, Body, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -531,32 +531,112 @@ FACILITY_COLUMN_MAP = {
     "Computers": "num_pcs"
 }
 
+import re as _re
+
+# Regex patterns for genuine computer lab venue types / names.
+# Word-boundary (\b) matching prevents false positives like
+# "physics lab 1" matching the "cs lab" substring.
+_COMPUTER_LAB_PATTERNS = [
+    r"\bcomputer\b",                          # computer lab, computer center
+    r"\bcc\s*lab\b",                         # CC Lab
+    r"\bit\s*lab\b",                         # IT Lab
+    r"\bpskill\b",                            # PSKILL Lab
+    r"\bprogramming\s*lab\b",
+    r"\bai\s*lab\b",
+    r"\bml\s*lab\b",
+    r"\bcloud\b",
+    r"\bdatabase\b",
+    r"\bdata\s*(mining|science|structure)\b", # specific data labs only
+    r"\bbas\s*lab\b",
+    r"\binternet\s*center\b",
+    r"\bfull\s*stack\s*lab\b",
+    r"\bnetwork\s*lab\b",
+]
+
+def _is_genuine_computer_lab(room_dict: dict) -> bool:
+    """
+    Returns True only if the room is a real computer lab.
+    Strategy:
+      1. venue_type or venue_name matches a computer-lab regex pattern, OR
+      2. num_pcs >= 10 AND num_pcs >= 25% of capacity
+         (rules out classrooms/physics labs that got 1-2 dummy PCs from synthetic data)
+    """
+    if not room_dict:
+        return False
+    vtype = str(room_dict.get("venue_type", "")).lower().strip()
+    vname = str(room_dict.get("venue_name", "")).lower().strip()
+    num_pcs = int(room_dict.get("num_pcs", 0) or 0)
+    capacity = int(room_dict.get("capacity", 1) or 1)
+
+    # Check venue type / name with word-boundary regex patterns
+    for pattern in _COMPUTER_LAB_PATTERNS:
+        if _re.search(pattern, vtype) or _re.search(pattern, vname):
+            return True
+
+    # Accept if genuinely PC-heavy (>=10 PCs and at least 25% of seats are PCs)
+    if num_pcs >= 10 and (num_pcs / capacity) >= 0.25:
+        return True
+
+    return False
+
+_type_canonical_to_raw = {
+    "Classroom":       ["Classroom"],
+    "Lab / Laboratory":["laboratory", "Lab", "Special Lab", "SPECIAL LAB", "special lab", "Laboratory", "BAS Lab"],
+    "Computer Lab":    ["COMPUTER LAB", "Computer Lab", "computer lab"],
+    "Seminar Hall":    ["SEMINAR HALL", "Seminar Hall"],
+    "Conference Hall": ["CONFERENCE HALL", "Conference Hall"],
+    "Discussion Room": ["DISCUSSION ROOM", "Discussion Room"],
+    "PG Small Hall":   ["PG Small Hall"],
+    "Self Study Hall": ["Self Study Hall"],
+    "Drawing Hall":    ["Drawing Hall"],
+    "Tutorial Hall":   ["Tutorial Hall"],
+    "Syndicate Room":  ["Syndicate Room"],
+    "Board Room":      ["BOARD ROOM", "Board Room"],
+    "Smart Class":     ["Smart Class"],
+    "Library":         ["Library"],
+}
+
+def check_room_satisfies_type(room_dict, canonical_type):
+    if not canonical_type or canonical_type == "Any":
+        return True
+    if not room_dict:
+        return False
+    raw_types = _type_canonical_to_raw.get(canonical_type)
+    vtype = str(room_dict.get("venue_type", "")).lower().strip()
+    if raw_types:
+        return vtype in [r.lower() for r in raw_types]
+    return canonical_type.lower() in vtype
+
 def check_room_satisfies_facilities(room_dict, req_facs):
+    if not room_dict:
+        return False
     for fac in req_facs:
         col = FACILITY_COLUMN_MAP.get(fac)
         if not col:
             continue
         if col == "num_pcs":
-            if room_dict.get(col, 0) == 0:
+            # Use the strict computer-lab check instead of num_pcs > 0
+            if not _is_genuine_computer_lab(room_dict):
                 return False
         else:
             if not room_dict.get(col):
                 return False
     return True
 
-def get_suitable_replacement_room(orig_room_name, req_facs, student_dept, all_venues_list, venues_name_map, assigned_counts, occupied_seats=None):
+def get_suitable_replacement_room(orig_room_name, req_facs, student_dept, all_venues_list, venues_name_map, assigned_counts, occupied_seats=None, req_venue_type=None):
     if occupied_seats is None:
         occupied_seats = {}
         
     orig_name_upper = orig_room_name.strip().upper()
     orig_room = venues_name_map.get(orig_name_upper)
     
-    # Check if the original room satisfies facilities and has remaining capacity
+    # Check if the original room satisfies facilities, type constraints, and has remaining capacity
     if orig_room:
         satisfies_facs = check_room_satisfies_facilities(orig_room, req_facs or []) if req_facs else True
+        satisfies_type = check_room_satisfies_type(orig_room, req_venue_type) if req_venue_type else True
         orig_occupied = occupied_seats.get(orig_name_upper, 0)
         orig_effective_cap = orig_room["capacity"] - orig_occupied
-        if satisfies_facs and assigned_counts.get(orig_name_upper, 0) < orig_effective_cap:
+        if satisfies_facs and satisfies_type and assigned_counts.get(orig_name_upper, 0) < orig_effective_cap:
             return orig_room_name
 
     orig_type = orig_room["venue_type"] if orig_room else None
@@ -570,16 +650,22 @@ def get_suitable_replacement_room(orig_room_name, req_facs, student_dept, all_ve
             orig_type = "Classroom"
             
     is_orig_lab = "lab" in orig_type.lower() or "laboratory" in orig_type.lower()
+
+    # If "Computers" is required, we MUST use computer labs regardless of the original room type.
+    # The master mapping assigns classrooms as AN venues — we need to override to computer labs.
+    requires_computers = req_facs and "Computers" in req_facs
     
     candidates = []
     for v in all_venues_list:
         if req_facs and not check_room_satisfies_facilities(v, req_facs):
             continue
             
-        # Verify type category match
-        is_candidate_lab = "lab" in v["venue_type"].lower() or "laboratory" in v["venue_type"].lower()
-        if is_candidate_lab != is_orig_lab:
-            continue
+        # Verify type category match — skip this constraint when Computers is required
+        # or when the user has explicitly selected a custom venue type constraint.
+        if not requires_computers and (not req_venue_type or req_venue_type == "Any"):
+            is_candidate_lab = "lab" in v["venue_type"].lower() or "laboratory" in v["venue_type"].lower()
+            if is_candidate_lab != is_orig_lab:
+                continue
             
         v_name_upper = v["venue_name"].strip().upper()
         current_count = assigned_counts.get(v_name_upper, 0)
@@ -595,20 +681,20 @@ def get_suitable_replacement_room(orig_room_name, req_facs, student_dept, all_ve
         # 2. Dept Preference Match (student dept matches pref, then General, then others)
         v_dept = v.get("department_preference", "General")
         dept_score = 2 if (v_dept.upper() == student_dept.upper()) else (1 if v_dept == "General" else 0)
-        # 3. Capacity (larger first or sort preference)
+        # 3. Capacity (larger first)
         cap_score = v["capacity"] - occupied_seats.get(v_name_upper, 0)
         
         candidates.append((v, block_score, dept_score, cap_score))
         
     if not candidates:
-        # Fallback: if all satisfying rooms are full, look at all satisfying rooms (even if full)
-        # and choose the one with the most remaining capacity (or least over-allocated)
+        # Fallback: all satisfying rooms are full — pick the least over-allocated one
         for v in all_venues_list:
             if req_facs and not check_room_satisfies_facilities(v, req_facs):
                 continue
-            is_candidate_lab = "lab" in v["venue_type"].lower() or "laboratory" in v["venue_type"].lower()
-            if is_candidate_lab != is_orig_lab:
-                continue
+            if not requires_computers and (not req_venue_type or req_venue_type == "Any"):
+                is_candidate_lab = "lab" in v["venue_type"].lower() or "laboratory" in v["venue_type"].lower()
+                if is_candidate_lab != is_orig_lab:
+                    continue
                 
             v_name_upper = v["venue_name"].strip().upper()
             current_count = assigned_counts.get(v_name_upper, 0)
@@ -617,13 +703,12 @@ def get_suitable_replacement_room(orig_room_name, req_facs, student_dept, all_ve
             v_dept = v.get("department_preference", "General")
             dept_score = 2 if (v_dept.upper() == student_dept.upper()) else (1 if v_dept == "General" else 0)
             
-            # For fallback, sort by remaining capacity: (capacity - occupied_seats) - current_count
             effective_capacity = v["capacity"] - occupied_seats.get(v_name_upper, 0)
             remaining_cap = effective_capacity - current_count
             candidates.append((v, block_score, dept_score, remaining_cap))
             
         if not candidates:
-            return orig_room_name  # fallback to original if no candidate satisfies
+            return orig_room_name  # absolute fallback
             
         candidates.sort(key=lambda x: (-x[1], -x[2], -x[3]))
         return candidates[0][0]["venue_name"]
@@ -631,6 +716,101 @@ def get_suitable_replacement_room(orig_room_name, req_facs, student_dept, all_ve
     # Sort candidates: block_score (desc), dept_score (desc), cap_score (desc)
     candidates.sort(key=lambda x: (-x[1], -x[2], -x[3]))
     return candidates[0][0]["venue_name"]
+@app.get("/venue-types")
+def get_venue_types():
+    """
+    Returns distinct venue types available in the DB, normalized into
+    user-friendly canonical groups for the radio-button selector.
+    Each entry has: {value, label, count}
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT venue_type, COUNT(*) as cnt FROM venues WHERE status='Active' GROUP BY venue_type")
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Normalize raw DB types into canonical groups
+    # (the DB has inconsistent casing/naming from the Excel import)
+    canonical_map = {
+        # Classrooms
+        "classroom":          "Classroom",
+        # General Labs (non-computer)
+        "laboratory":         "Lab / Laboratory",
+        "lab":                "Lab / Laboratory",
+        "special lab":        "Lab / Laboratory",
+        "special_lab":        "Lab / Laboratory",
+        "bas lab":            "Lab / Laboratory",
+        # Computer Labs
+        "computer lab":       "Computer Lab",
+        "computer_lab":       "Computer Lab",
+        # Halls
+        "seminar hall":       "Seminar Hall",
+        "conference hall":    "Conference Hall",
+        "discussion room":    "Discussion Room",
+        "pg small hall":      "PG Small Hall",
+        "self study hall":    "Self Study Hall",
+        "drawing hall":       "Drawing Hall",
+        "tutorial hall":      "Tutorial Hall",
+        "syndicate room":     "Syndicate Room",
+        "board room":         "Board Room",
+        # Smart Rooms
+        "smart class":        "Smart Class",
+        # Other
+        "library":            "Library",
+    }
+
+    grouped: dict = {}
+    for row in rows:
+        raw = str(row[0] or "").strip()
+        cnt = row[1]
+        canonical = canonical_map.get(raw.lower(), raw)  # fallback: keep as-is
+        if canonical in grouped:
+            grouped[canonical] += cnt
+        else:
+            grouped[canonical] = cnt
+
+    result = sorted(
+        [{"value": k, "label": k, "count": v} for k, v in grouped.items()],
+        key=lambda x: -x["count"]
+    )
+    return {"types": result}
+
+
+def resolve_venue_name(name_str: str, venues_by_name: dict) -> str:
+    if not name_str:
+        return name_str
+    
+    # 1. Direct match (case-insensitive)
+    name_upper = name_str.strip().upper()
+    if name_upper in venues_by_name:
+        return venues_by_name[name_upper]["venue_name"]
+        
+    # 2. Extract number if it contains "lab" or similar
+    name_lower = name_str.lower()
+    if "lab" in name_lower or "laboratory" in name_lower:
+        import re
+        nums = re.findall(r'\d+', name_str)
+        if nums:
+            num = int(nums[0])
+            # Search venues in the database for a computer lab or lab containing this number
+            for v_upper, v in venues_by_name.items():
+                v_name_lower = v["venue_name"].lower()
+                # Check if it's a lab and has the same number
+                if ("lab" in v_name_lower or "laboratory" in v_name_lower) and ("computer" in v_name_lower or "computer" in v["venue_type"].lower()):
+                    v_nums = re.findall(r'\d+', v["venue_name"])
+                    if v_nums and int(v_nums[0]) == num:
+                        return v["venue_name"]
+                    
+            # Try any lab with the same number if no computer lab matched
+            for v_upper, v in venues_by_name.items():
+                v_name_lower = v["venue_name"].lower()
+                if "lab" in v_name_lower or "laboratory" in v_name_lower:
+                    v_nums = re.findall(r'\d+', v["venue_name"])
+                    if v_nums and int(v_nums[0]) == num:
+                        return v["venue_name"]
+                        
+    return name_str
+
 
 @app.post("/upload-venue-mapping")
 def upload_venue_mapping(
@@ -642,8 +822,11 @@ def upload_venue_mapping(
     end_session: Optional[str] = Form("AN"),
     fn_facilities: Optional[str] = Form(None),
     an_facilities: Optional[str] = Form(None),
+    fn_venue_type: Optional[str] = Form(None),
+    an_venue_type: Optional[str] = Form(None),
     remarks: Optional[str] = Form(None),
-    strict_dept: bool = Form(False)
+    strict_dept: bool = Form(False),
+    same_as_fn: bool = Form(False)
 ):
     import io
     import pandas as pd
@@ -672,7 +855,21 @@ def upload_venue_mapping(
         cursor.execute("SELECT * FROM venues WHERE status = 'Active'")
         all_venues = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        
+
+        # Apply venue type filters separately for FN and AN
+        fn_venues_pool = [v for v in all_venues if check_room_satisfies_type(v, fn_venue_type)]
+        an_venues_pool = [v for v in all_venues if check_room_satisfies_type(v, an_venue_type)]
+
+        # Safety fallback: if the filter produces no venues, use all venues
+        if not fn_venues_pool:
+            logger.warning(f"fn_venue_type='{fn_venue_type}' matched 0 venues; using all venues.")
+            fn_venues_pool = all_venues
+        if not an_venues_pool:
+            logger.warning(f"an_venue_type='{an_venue_type}' matched 0 venues; using all venues.")
+            an_venues_pool = all_venues
+
+        logger.info(f"Venue pools: FN={len(fn_venues_pool)} ({fn_venue_type}), AN={len(an_venues_pool)} ({an_venue_type})")
+
         # Determine the target slots for the request
         target_slots = get_date_session_slots(start_date, start_session, end_date if end_date else start_date, end_session if end_date else start_session)
         
@@ -816,15 +1013,20 @@ def upload_venue_mapping(
         for dept, group in df_master.groupby("Department"):
             most_common_lab = group["Lab (FN)"].mode().iloc[0] if not group["Lab (FN)"].mode().empty else "IT Lab 1"
             most_common_venue = group["Venue (AN)"].mode().iloc[0] if not group["Venue (AN)"].mode().empty else "WW 226"
-            dept_fallback[str(dept).strip().upper()] = {"Lab (FN)": most_common_lab, "Venue (AN)": most_common_venue}
+            dept_fallback[str(dept).strip().upper()] = {
+                "Lab (FN)": resolve_venue_name(most_common_lab, venues_by_name),
+                "Venue (AN)": resolve_venue_name(most_common_venue, venues_by_name)
+            }
             
         master_dict = {}
         for _, row in df_master.iterrows():
             reg_no = str(row.get("Reg No", "")).strip().upper()
             if reg_no:
+                raw_lab = str(row.get("Lab (FN)", "IT Lab 1")).strip()
+                raw_venue = str(row.get("Venue (AN)", "WW 226")).strip()
                 master_dict[reg_no] = {
-                    "Lab (FN)": str(row.get("Lab (FN)", "IT Lab 1")).strip(),
-                    "Venue (AN)": str(row.get("Venue (AN)", "WW 226")).strip()
+                    "Lab (FN)": resolve_venue_name(raw_lab, venues_by_name),
+                    "Venue (AN)": resolve_venue_name(raw_venue, venues_by_name)
                 }
                 
         # Load uploaded file
@@ -940,7 +1142,11 @@ def upload_venue_mapping(
                     v_info = venues_by_name.get(current_lab.strip().upper())
                     capacity = (v_info["capacity"] - occupied_fn.get(current_lab.strip().upper(), 0)) if v_info else 40
                     
+                    tried_labs = set()
                     while assigned_fn.get(current_lab.strip().upper(), 0) >= capacity:
+                        if current_lab.strip().upper() in tried_labs:
+                            break
+                        tried_labs.add(current_lab.strip().upper())
                         lab_idx += 1
                         if lab_idx < len(dept_labs):
                             current_lab = dept_labs[lab_idx]
@@ -948,48 +1154,60 @@ def upload_venue_mapping(
                             capacity = (v_info["capacity"] - occupied_fn.get(current_lab.strip().upper(), 0)) if v_info else 40
                         else:
                             last_lab = dept_labs[-1]
-                            current_lab = get_suitable_replacement_room(last_lab, req_fn_facilities or [], dept_name, all_venues, venues_by_name, assigned_fn, occupied_seats=occupied_fn)
+                            current_lab = get_suitable_replacement_room(last_lab, req_fn_facilities or [], dept_name, fn_venues_pool, venues_by_name, assigned_fn, occupied_seats=occupied_fn, req_venue_type=fn_venue_type)
                             dept_labs.append(current_lab)
                             v_info = venues_by_name.get(current_lab.strip().upper())
                             capacity = (v_info["capacity"] - occupied_fn.get(current_lab.strip().upper(), 0)) if v_info else 40
                             
                     resolved_lab = current_lab
-                    if req_fn_facilities:
-                        orig_room = venues_by_name.get(current_lab.strip().upper())
-                        if not (orig_room and check_room_satisfies_facilities(orig_room, req_fn_facilities)):
-                            resolved_lab = get_suitable_replacement_room(current_lab, req_fn_facilities, dept_name, all_venues, venues_by_name, assigned_fn, occupied_seats=occupied_fn)
-                            
+                    orig_room = venues_by_name.get(current_lab.strip().upper())
+                    satisfies_facilities = check_room_satisfies_facilities(orig_room, req_fn_facilities) if req_fn_facilities else True
+                    satisfies_type = check_room_satisfies_type(orig_room, fn_venue_type) if fn_venue_type else True
+                    if not (orig_room and satisfies_facilities and satisfies_type):
+                        resolved_lab = get_suitable_replacement_room(current_lab, req_fn_facilities, dept_name, fn_venues_pool, venues_by_name, assigned_fn, occupied_seats=occupied_fn, req_venue_type=fn_venue_type)
+                        
                     s["allotted_lab_fn"] = resolved_lab
                     assigned_fn[resolved_lab.strip().upper()] = assigned_fn.get(resolved_lab.strip().upper(), 0) + 1
                     
                 # Allocate Afternoon Venues
-                venue_idx = 0
-                current_venue = dept_venues[0]
-                for s in students_in_dept:
-                    v_info = venues_by_name.get(current_venue.strip().upper())
-                    capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
-                    
-                    while assigned_an.get(current_venue.strip().upper(), 0) >= capacity:
-                        venue_idx += 1
-                        if venue_idx < len(dept_venues):
-                            current_venue = dept_venues[venue_idx]
-                            v_info = venues_by_name.get(current_venue.strip().upper())
-                            capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
-                        else:
-                            last_venue = dept_venues[-1]
-                            current_venue = get_suitable_replacement_room(last_venue, req_an_facilities or [], dept_name, all_venues, venues_by_name, assigned_an, occupied_seats=occupied_an)
-                            dept_venues.append(current_venue)
-                            v_info = venues_by_name.get(current_venue.strip().upper())
-                            capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
-                            
-                    resolved_venue = current_venue
-                    if req_an_facilities:
+                if same_as_fn:
+                    for s in students_in_dept:
+                        resolved_venue = s["allotted_lab_fn"]
+                        s["allotted_venue_an"] = resolved_venue
+                        assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
+                else:
+                    venue_idx = 0
+                    current_venue = dept_venues[0]
+                    for s in students_in_dept:
+                        v_info = venues_by_name.get(current_venue.strip().upper())
+                        capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
+                        
+                        tried_venues = set()
+                        while assigned_an.get(current_venue.strip().upper(), 0) >= capacity:
+                            if current_venue.strip().upper() in tried_venues:
+                                break
+                            tried_venues.add(current_venue.strip().upper())
+                            venue_idx += 1
+                            if venue_idx < len(dept_venues):
+                                current_venue = dept_venues[venue_idx]
+                                v_info = venues_by_name.get(current_venue.strip().upper())
+                                capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
+                            else:
+                                last_venue = dept_venues[-1]
+                                current_venue = get_suitable_replacement_room(last_venue, req_an_facilities or [], dept_name, an_venues_pool, venues_by_name, assigned_an, occupied_seats=occupied_an, req_venue_type=an_venue_type)
+                                dept_venues.append(current_venue)
+                                v_info = venues_by_name.get(current_venue.strip().upper())
+                                capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
+                                
+                        resolved_venue = current_venue
                         orig_room = venues_by_name.get(current_venue.strip().upper())
-                        if not (orig_room and check_room_satisfies_facilities(orig_room, req_an_facilities)):
-                            resolved_venue = get_suitable_replacement_room(current_venue, req_an_facilities, dept_name, all_venues, venues_by_name, assigned_an, occupied_seats=occupied_an)
+                        satisfies_facilities = check_room_satisfies_facilities(orig_room, req_an_facilities) if req_an_facilities else True
+                        satisfies_type = check_room_satisfies_type(orig_room, an_venue_type) if an_venue_type else True
+                        if not (orig_room and satisfies_facilities and satisfies_type):
+                            resolved_venue = get_suitable_replacement_room(current_venue, req_an_facilities, dept_name, an_venues_pool, venues_by_name, assigned_an, occupied_seats=occupied_an, req_venue_type=an_venue_type)
                             
-                    s["allotted_venue_an"] = resolved_venue
-                    assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
+                        s["allotted_venue_an"] = resolved_venue
+                        assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
                     
                 for s in students_in_dept:
                     students_allotted.append({
@@ -1022,7 +1240,11 @@ def upload_venue_mapping(
                 v_info = venues_by_name.get(current_lab.strip().upper())
                 capacity = (v_info["capacity"] - occupied_fn.get(current_lab.strip().upper(), 0)) if v_info else 40
                 
+                tried_labs = set()
                 while assigned_fn.get(current_lab.strip().upper(), 0) >= capacity:
+                    if current_lab.strip().upper() in tried_labs:
+                        break
+                    tried_labs.add(current_lab.strip().upper())
                     lab_idx += 1
                     if lab_idx < len(all_labs):
                         current_lab = all_labs[lab_idx]
@@ -1030,48 +1252,60 @@ def upload_venue_mapping(
                         capacity = (v_info["capacity"] - occupied_fn.get(current_lab.strip().upper(), 0)) if v_info else 40
                     else:
                         last_lab = all_labs[-1]
-                        current_lab = get_suitable_replacement_room(last_lab, req_fn_facilities or [], s["department"], all_venues, venues_by_name, assigned_fn, occupied_seats=occupied_fn)
+                        current_lab = get_suitable_replacement_room(last_lab, req_fn_facilities or [], s["department"], fn_venues_pool, venues_by_name, assigned_fn, occupied_seats=occupied_fn, req_venue_type=fn_venue_type)
                         all_labs.append(current_lab)
                         v_info = venues_by_name.get(current_lab.strip().upper())
                         capacity = (v_info["capacity"] - occupied_fn.get(current_lab.strip().upper(), 0)) if v_info else 40
                         
                 resolved_lab = current_lab
-                if req_fn_facilities:
-                    orig_room = venues_by_name.get(current_lab.strip().upper())
-                    if not (orig_room and check_room_satisfies_facilities(orig_room, req_fn_facilities)):
-                        resolved_lab = get_suitable_replacement_room(current_lab, req_fn_facilities, s["department"], all_venues, venues_by_name, assigned_fn, occupied_seats=occupied_fn)
-                        
+                orig_room = venues_by_name.get(current_lab.strip().upper())
+                satisfies_facilities = check_room_satisfies_facilities(orig_room, req_fn_facilities) if req_fn_facilities else True
+                satisfies_type = check_room_satisfies_type(orig_room, fn_venue_type) if fn_venue_type else True
+                if not (orig_room and satisfies_facilities and satisfies_type):
+                    resolved_lab = get_suitable_replacement_room(current_lab, req_fn_facilities, s["department"], fn_venues_pool, venues_by_name, assigned_fn, occupied_seats=occupied_fn, req_venue_type=fn_venue_type)
+                    
                 s["allotted_lab_fn"] = resolved_lab
                 assigned_fn[resolved_lab.strip().upper()] = assigned_fn.get(resolved_lab.strip().upper(), 0) + 1
                 
             # Allocate Afternoon Venues
-            venue_idx = 0
-            current_venue = all_venues_list[0]
-            for s in students_pool:
-                v_info = venues_by_name.get(current_venue.strip().upper())
-                capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
-                
-                while assigned_an.get(current_venue.strip().upper(), 0) >= capacity:
-                    venue_idx += 1
-                    if venue_idx < len(all_venues_list):
-                        current_venue = all_venues_list[venue_idx]
-                        v_info = venues_by_name.get(current_venue.strip().upper())
-                        capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
-                    else:
-                        last_venue = all_venues_list[-1]
-                        current_venue = get_suitable_replacement_room(last_venue, req_an_facilities or [], s["department"], all_venues, venues_by_name, assigned_an, occupied_seats=occupied_an)
-                        all_venues_list.append(current_venue)
-                        v_info = venues_by_name.get(current_venue.strip().upper())
-                        capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
-                        
-                resolved_venue = current_venue
-                if req_an_facilities:
+            if same_as_fn:
+                for s in students_pool:
+                    resolved_venue = s["allotted_lab_fn"]
+                    s["allotted_venue_an"] = resolved_venue
+                    assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
+            else:
+                venue_idx = 0
+                current_venue = all_venues_list[0]
+                for s in students_pool:
+                    v_info = venues_by_name.get(current_venue.strip().upper())
+                    capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
+                    
+                    tried_venues = set()
+                    while assigned_an.get(current_venue.strip().upper(), 0) >= capacity:
+                        if current_venue.strip().upper() in tried_venues:
+                            break
+                        tried_venues.add(current_venue.strip().upper())
+                        venue_idx += 1
+                        if venue_idx < len(all_venues_list):
+                            current_venue = all_venues_list[venue_idx]
+                            v_info = venues_by_name.get(current_venue.strip().upper())
+                            capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
+                        else:
+                            last_venue = all_venues_list[-1]
+                            current_venue = get_suitable_replacement_room(last_venue, req_an_facilities or [], s["department"], an_venues_pool, venues_by_name, assigned_an, occupied_seats=occupied_an, req_venue_type=an_venue_type)
+                            all_venues_list.append(current_venue)
+                            v_info = venues_by_name.get(current_venue.strip().upper())
+                            capacity = (v_info["capacity"] - occupied_an.get(current_venue.strip().upper(), 0)) if v_info else 40
+                            
+                    resolved_venue = current_venue
                     orig_room = venues_by_name.get(current_venue.strip().upper())
-                    if not (orig_room and check_room_satisfies_facilities(orig_room, req_an_facilities)):
-                        resolved_venue = get_suitable_replacement_room(current_venue, req_an_facilities, s["department"], all_venues, venues_by_name, assigned_an, occupied_seats=occupied_an)
+                    satisfies_facilities = check_room_satisfies_facilities(orig_room, req_an_facilities) if req_an_facilities else True
+                    satisfies_type = check_room_satisfies_type(orig_room, an_venue_type) if an_venue_type else True
+                    if not (orig_room and satisfies_facilities and satisfies_type):
+                        resolved_venue = get_suitable_replacement_room(current_venue, req_an_facilities, s["department"], an_venues_pool, venues_by_name, assigned_an, occupied_seats=occupied_an, req_venue_type=an_venue_type)
                         
-                s["allotted_venue_an"] = resolved_venue
-                assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
+                    s["allotted_venue_an"] = resolved_venue
+                    assigned_an[resolved_venue.strip().upper()] = assigned_an.get(resolved_venue.strip().upper(), 0) + 1
                 
             for s in students_pool:
                 students_allotted.append({
@@ -1236,7 +1470,8 @@ def get_bookings(staff_id: Optional[str] = Query(None, description="Filter booki
             query = {}
             if staff_id:
                 query["staffId"] = staff_id
-            cursor = collection.find(query)
+            # Exclude bulkDetails.students projection to optimize network payload
+            cursor = collection.find(query, {"bulkDetails.students": 0})
             bookings = []
             for doc in cursor:
                 doc.pop("_id", None)
@@ -1250,6 +1485,10 @@ def get_bookings(staff_id: Optional[str] = Query(None, description="Filter booki
         all_bookings = get_sqlite_bookings()
         if staff_id:
             all_bookings = [b for b in all_bookings if b.get("staffId") == staff_id]
+        # Exclude students list to minimize payload size
+        for b in all_bookings:
+            if "bulkDetails" in b and "students" in b["bulkDetails"]:
+                b["bulkDetails"].pop("students", None)
         return all_bookings
     except Exception as e:
         logger.error(f"Error in get_bookings SQLite fallback: {e}")
@@ -1334,3 +1573,190 @@ def get_student_allotment(email: str = Query(...)):
     return {"allotments": student_allotments}
 
 
+# ----------------- GOOGLE SHEETS EXPORT ENDPOINT -----------------
+
+@app.post("/upload-to-sheets/{session_id}")
+async def upload_to_sheets(session_id: str, request: Request):
+    """
+    Export an allotment Excel file to a new Google Sheet.
+    Expects the caller to pass a valid Google OAuth2 access_token
+    in the Authorization header: "Bearer <access_token>"
+    The token must have scopes: spreadsheets + drive.file
+    """
+    import httpx
+    import json as _json
+
+    # Extract Bearer token from Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header. Expected: Bearer <access_token>")
+    access_token = auth_header[len("Bearer "):]
+
+    # Locate the allotment Excel file
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    temp_dir = os.path.join(BASE_DIR, "data", "temp")
+    temp_file_path = os.path.join(temp_dir, f"{session_id}.xlsx")
+
+    # If file is missing, attempt to regenerate it from the DB (same logic as download endpoint)
+    if not os.path.exists(temp_file_path):
+        import pandas as pd
+        students = None
+        if MONGO_ACTIVE:
+            try:
+                db = get_mongo_db()
+                doc = db.bookings.find_one({"bulkDetails.sessionId": session_id})
+                if doc and "bulkDetails" in doc and "students" in doc["bulkDetails"]:
+                    students = doc["bulkDetails"]["students"]
+            except Exception as e:
+                logger.error(f"Error querying MongoDB for sheets export: {e}")
+        if not students:
+            try:
+                from utils.db import get_connection as _get_conn
+                conn = _get_conn()
+                cursor = conn.cursor()
+                cursor.execute("SELECT data FROM booking_requests")
+                rows = cursor.fetchall()
+                conn.close()
+                for row in rows:
+                    booking = _json.loads(row[0])
+                    if booking.get("bulkDetails", {}).get("sessionId") == session_id:
+                        students = booking.get("bulkDetails", {}).get("students")
+                        break
+            except Exception as e:
+                logger.error(f"Error querying SQLite for sheets export: {e}")
+        if students:
+            try:
+                os.makedirs(temp_dir, exist_ok=True)
+                df = pd.DataFrame(students)
+                cols_order = ["S.No", "Reg No", "Student Name", "Department", "Lab (FN)", "Venue (AN)"]
+                cols_order = [c for c in cols_order if c in df.columns]
+                df = df[cols_order]
+                df.to_excel(temp_file_path, index=False)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to regenerate allotment file: {str(e)}")
+        else:
+            raise HTTPException(status_code=404, detail="Allotment data not found for this session.")
+
+    # Read Excel into rows list
+    try:
+        import pandas as pd
+        df = pd.read_excel(temp_file_path)
+        # Replace NaN with empty string so JSON serialisation works
+        df = df.fillna("")
+        headers = list(df.columns)
+        data_rows = df.values.tolist()
+        # Convert all values to strings for Sheets API
+        all_rows = [headers] + [[str(v) for v in row] for row in data_rows]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read allotment Excel file: {str(e)}")
+
+    sheets_headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    # Derive a friendly spreadsheet title from session_id
+    spreadsheet_title = f"Allotment Plan – {session_id}"
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        # Step 1: Create a new blank Google Spreadsheet
+        create_payload = {
+            "properties": {"title": spreadsheet_title},
+            "sheets": [{"properties": {"title": "Allotment"}}]
+        }
+        create_resp = await client.post(
+            "https://sheets.googleapis.com/v4/spreadsheets",
+            headers=sheets_headers,
+            json=create_payload,
+        )
+        if create_resp.status_code != 200:
+            error_detail = create_resp.text
+            try:
+                error_detail = create_resp.json().get("error", {}).get("message", error_detail)
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=create_resp.status_code,
+                detail=f"Google Sheets API error (create): {error_detail}"
+            )
+        spreadsheet = create_resp.json()
+        spreadsheet_id = spreadsheet["spreadsheetId"]
+
+        # Step 2: Write all rows (header + data) into the Sheet
+        write_payload = {
+            "range": "Allotment!A1",
+            "majorDimension": "ROWS",
+            "values": all_rows,
+        }
+        write_resp = await client.put(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/Allotment!A1",
+            headers=sheets_headers,
+            params={"valueInputOption": "RAW"},
+            json=write_payload,
+        )
+        if write_resp.status_code != 200:
+            error_detail = write_resp.text
+            try:
+                error_detail = write_resp.json().get("error", {}).get("message", error_detail)
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=write_resp.status_code,
+                detail=f"Google Sheets API error (write): {error_detail}"
+            )
+
+        # Step 3: Auto-resize columns for better readability (optional batchUpdate)
+        try:
+            num_cols = len(headers)
+            fmt_payload = {
+                "requests": [
+                    {
+                        "autoResizeDimensions": {
+                            "dimensions": {
+                                "sheetId": 0,
+                                "dimension": "COLUMNS",
+                                "startIndex": 0,
+                                "endIndex": num_cols,
+                            }
+                        }
+                    },
+                    # Bold the header row
+                    {
+                        "repeatCell": {
+                            "range": {
+                                "sheetId": 0,
+                                "startRowIndex": 0,
+                                "endRowIndex": 1,
+                                "startColumnIndex": 0,
+                                "endColumnIndex": num_cols,
+                            },
+                            "cell": {
+                                "userEnteredFormat": {
+                                    "textFormat": {"bold": True},
+                                    "backgroundColor": {"red": 0.2, "green": 0.65, "blue": 0.32},
+                                    "horizontalAlignment": "CENTER",
+                                }
+                            },
+                            "fields": "userEnteredFormat(textFormat,backgroundColor,horizontalAlignment)",
+                        }
+                    },
+                ]
+            }
+            await client.post(
+                f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate",
+                headers=sheets_headers,
+                json=fmt_payload,
+            )
+        except Exception as fmt_err:
+            # Formatting is cosmetic — don't fail the whole operation
+            logger.warning(f"Sheet formatting step failed (non-critical): {fmt_err}")
+
+    spreadsheet_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
+    logger.info(f"Allotment {session_id} exported to Google Sheets: {spreadsheet_url}")
+
+    return {
+        "spreadsheet_id": spreadsheet_id,
+        "spreadsheet_url": spreadsheet_url,
+        "title": spreadsheet_title,
+        "rows_written": len(all_rows),
+    }
